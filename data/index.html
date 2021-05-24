@@ -1,0 +1,74 @@
+<!DOCTYPE HTML><html>
+<head>
+    <title>Pyranometer</title>
+
+    <script src="/src/script.js"></script>
+    <script src="/src/jquery.min.js"></script> <!-- version 3.6.0 -->
+    <script src="/src/bootstrap.bundle.min.js"></script>
+    
+    <link rel="stylesheet" type="text/css" href="/src/style.css">
+    <link rel="stylesheet" type="text/css" href="/src/bootstrap.min.css"> 
+
+    <!-- Dynamic window width -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Prevent request for favicon from client browser-->
+    <link rel="icon" href="data:,">
+</head>
+
+<body style="height:1500px" >
+    <!-- JUMBOTRON -->
+    <div class="jumbotron-fluid text-center" style="height:100px">
+        <h2>Pyranometer</h2>
+        <p>Tool to measure solar irradiance.</p> 
+    </div>
+
+    <!-- NAVIGATION -->
+    <nav class="navbar navbar-expand-lg justify-content-center bg-dark sticky-top">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link btn btn-secondary" href="graph.html" style="width: 100px; margin-left: 1px;">Graph</a>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link btn btn-secondary" style="width: 100px; margin-left: 1px;" data-toggle="modal" data-target="#helpModal">Help</button>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- MODAL - HELP -->
+    <div class="modal fade" id="helpModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title">How to use?</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <p>Navodila za uporabo...</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <!-- Morbt loh sirino das na 8..provi na telefoni-->
+            <div class="col-sm-6 mx-auto text-center">
+
+                <h2>LED</h2>
+                <p class="state">state: <span id="state">%STATE%</span></p>
+                <p><button id="button" class="button">Toggle</button></p>
+                <h2>Analog</h2>
+                <p class="state">value: <span id="a_val">%A_VAL%</span></p>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>
