@@ -1,7 +1,7 @@
 /*
 # After powerOn, device is in standby mode...measure mode - Bit D3 in register 0x2D (POWER_CTL)
 # Recommended: configure device in standby mode....
-
+// Configure device while in stand by mode, only then enter measurement mode with begin()
 */
 
 
@@ -64,12 +64,21 @@ void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 	write(ADXL350_OFSX, off_z);
 }
 
+// Enter measurement mode
 void ADXL350::begin()
 {
     // Wakeup, Begin MEASURE, AUTO SLEEP of, ...
     write(ADXL350_POWER_CTL, 8);
 }
 
+// Enter standby mode (low power 0.1uA but no measurements are available and interupts are disabled)
+// TODO testjrej če so res interupti disejblani al so sam meritve..ni tku nujnu..
+void ADXL350::standby()
+{
+	setRegisterBit(ADXL350_POWER_CTL, 3, false);
+}
+
+// Get raw acc measurements
 void ADXL350::getAccRaw(int16_t *x, int16_t *y, int16_t *z)
 {
     // Read Accel Data from ADXL345 (registers 0x32 through 0x37)
@@ -81,17 +90,12 @@ void ADXL350::getAccRaw(int16_t *x, int16_t *y, int16_t *z)
 	*z = (((int16_t) _buff[5]) << 8) | _buff[4];
 }
 
+// Get acc in terms of +- g
 void ADXL350::getAcc(float *x, float *y, float *z)
 {
 	int16_t _x = 0, _y = 0, _z = 0;
 
-    // Read Accel Data from ADXL345 (registers 0x32 through 0x37)
-	read(ADXL350_DATAX0, ADXL350_DATA_NUM, _buff);	
-
-	// Form 2 Bytes from buffer data
-	_x = (((int16_t) _buff[1]) << 8) | _buff[0];   
-	_y = (((int16_t) _buff[3]) << 8) | _buff[2];
-	_z = (((int16_t) _buff[5]) << 8) | _buff[4];
+    getAccRaw(&_x, &_y, &_z);
 
 	*x = _x * _range_gain;
 	*y = _y * _range_gain;
@@ -105,6 +109,8 @@ void ADXL350::getInclination(float *pitch, float *roll)
 
 	// Calculate roll and pitch (rotation around X-axis and Y-axis)
 	// https://www.nxp.com/files-static/sensors/doc/app_note/AN3461.pdf
+	// atan( y / sqrt(x2)  + z2) * 180 / pi
+	// atan( -x / sqrt(y2)  + z2) * 180 / pi
 	*roll = atan(_y / sqrt(pow(_x, 2) + pow(_z, 2))) * 180 / PI;
 	*pitch = atan(-1 * _x / sqrt(pow(_y, 2) + pow(_z, 2))) * 180 / PI;
 }
@@ -194,6 +200,60 @@ void ADXL350::setDataRate(int val)
 	_s |= (_b & B00010000);
 	write(ADXL350_BW_RATE, _s);
 }
+
+
+void autoSleepMode(void)
+{
+
+}
+
+
+/* DOUBLE TAP INTERUPT CONFIG
+ * 1) disable interupts (INT_ENABLE to 0)
+ * 2) map interupt to pin int1 or int2 (INT_MAP)
+ * 
+ *
+ * Interupt is cleard with reading INT_SOURCE register or any DATA register
+ */
+
+void initDoubleTapInt(byte threshold)
+{
+	write(ADXL350_INT_ENABLE, 0);
+	write(ADXL350_INT_MAP, );
+}
+
+
+/* ACTIVITY INTERUPT CONFIG
+ * Activity bit is set when value is larger than TRESH_ACT register
+ * Threshold value is unsigned byte (8 bits) in scale of 31.2 mg/LSB
+*/
+void initActivityInt(byte threshold)
+{
+	byte _r;
+
+	// Store interupt register and disable interupts
+	read(ADXL350_INT_ENABLE, 1, &_r);
+	write(ADXL350_INT_ENABLE, 0);
+
+	// Bit 0 maps to INT1, Bit 1 maps to INT2
+	setRegisterBit(ADXL350_INT_MAP, 4, true);
+
+	// Set treshold
+	write(ADXL350_THRESH_ACT, threshold);
+
+	// Enable interupts + activity
+	_r |= B00010000;
+	write(ADXL350_INT_ENABLE, _r);
+}
+
+void getInterupt(int *source)
+{
+	byte _r;
+	read(ADXL350_INT_SOURCE, 1, &_r);
+	*source = _r;
+}
+
+
 
 // Print Register Values to Serial Output =
 // Can be used to Manually Check the Current Configuration of Device
