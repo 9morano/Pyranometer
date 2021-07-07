@@ -1,7 +1,6 @@
 /*
-# After powerOn, device is in standby mode...measure mode - Bit D3 in register 0x2D (POWER_CTL)
-# Recommended: configure device in standby mode....
-// Configure device while in stand by mode, only then enter measurement mode with begin()
+After powerOn, device is in standby mode...measure mode - Bit D3 in register 0x2D (POWER_CTL)
+Configure device while in stand by mode, only then enter measurement mode with begin()
 */
 
 
@@ -29,18 +28,6 @@ void ADXL350::setup()
 	// Go into standby mode
 	write(ADXL350_POWER_CTL, 0);
 	setRegisterBit(ADXL350_POWER_CTL, 3, false);
-
-	// Disable interupts (set to default register values)
-	write(ADXL350_INT_ENABLE, 0);
-	write(ADXL350_INT_MAP, 0);
-
-	// TODO delete below
-	byte tmp;
-	read(ADXL350_POWER_CTL, 1, &tmp);
-	Serial.println(tmp);
-
-	Serial.println("All register values");
-	printAllRegister();
 }
 
 void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
@@ -53,10 +40,6 @@ void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 	// Go into standby mode
 	write(ADXL350_POWER_CTL, 0);
 	setRegisterBit(ADXL350_POWER_CTL, 3, false);
-
-	// Disable interupts (set to default register values)
-	write(ADXL350_INT_ENABLE, 0);
-	write(ADXL350_INT_MAP, 0);
 
 	// Set offset values
 	write(ADXL350_OFSX, off_x);
@@ -73,10 +56,10 @@ void ADXL350::begin()
 
 // Enter standby mode (low power 0.1uA but no measurements are available and interupts are disabled)
 // TODO testjrej če so res interupti disejblani al so sam meritve..ni tku nujnu..
-void ADXL350::standby()
-{
-	setRegisterBit(ADXL350_POWER_CTL, 3, false);
-}
+//void ADXL350::standby()
+//{
+//	setRegisterBit(ADXL350_POWER_CTL, 3, false);
+//}
 
 // Get raw acc measurements
 void ADXL350::getAccRaw(int16_t *x, int16_t *y, int16_t *z)
@@ -202,87 +185,25 @@ void ADXL350::setDataRate(int val)
 }
 
 
-void autoSleepMode(void)
+// Put device in sleep (lower sampling rate, but activity function can be used)
+// Power saving (40uA)
+void ADXL350::enterSleepMode(void)
 {
-
+	byte _r = B00001100;
+	// Go to sleep and measure activity with rate of 8Hz
+	write(ADXL350_POWER_CTL, _r);
 }
 
-
-/* DOUBLE TAP INTERUPT CONFIG
- * 1) disable interupts (INT_ENABLE to 0)
- * 2) map interupt to pin int1 or int2 (INT_MAP)
- * 
- *
- * Interupt is cleard with reading INT_SOURCE register or any DATA register
- */
-
-void initDoubleTapInt(byte threshold)
+// Wake device up from sleep mode
+void ADXL350::exitSleepMode(void)
 {
-	write(ADXL350_INT_ENABLE, 0);
-	write(ADXL350_INT_MAP, );
+	// Go to standby mode (and clear sleep bit) and then enter measurement mode
+	byte _r = B00000000;
+	write(ADXL350_POWER_CTL, _r);
+	_r = B00001000;
+	write(ADXL350_POWER_CTL, _r);
 }
 
-
-/* ACTIVITY INTERUPT CONFIG
- * Activity bit is set when value is larger than TRESH_ACT register
- * Threshold value is unsigned byte (8 bits) in scale of 31.2 mg/LSB
-*/
-void initActivityInt(byte threshold)
-{
-	byte _r;
-
-	// Store interupt register and disable interupts
-	read(ADXL350_INT_ENABLE, 1, &_r);
-	write(ADXL350_INT_ENABLE, 0);
-
-	// Bit 0 maps to INT1, Bit 1 maps to INT2
-	setRegisterBit(ADXL350_INT_MAP, 4, true);
-
-	// Set treshold
-	write(ADXL350_THRESH_ACT, threshold);
-
-	// Enable interupts + activity
-	_r |= B00010000;
-	write(ADXL350_INT_ENABLE, _r);
-}
-
-void getInterupt(int *source)
-{
-	byte _r;
-	read(ADXL350_INT_SOURCE, 1, &_r);
-	*source = _r;
-}
-
-
-
-// Print Register Values to Serial Output =
-// Can be used to Manually Check the Current Configuration of Device
-void ADXL350::printAllRegister()
-{
-	byte _b;
-	Serial.print("0x00: ");
-	read(0x00, 1, &_b);
-	print_byte(_b);
-	Serial.println("");
-	int i;
-	for (i=29;i<=57;i++){
-		Serial.print("0x");
-		Serial.print(i, HEX);
-		Serial.print(": ");
-		read(i, 1, &_b);
-		print_byte(_b);
-		Serial.println("");    
-	}
-}
-
-void print_byte(byte val)
-{
-	int i;
-	Serial.print("B");
-	for(i=7; i>=0; i--){
-		Serial.print(val >> i & 1, BIN);
-	}
-}
 
 
 
@@ -340,7 +261,42 @@ bool ADXL350::getRegisterBit(byte regAdress, int bitPos)
 	return ((_b >> bitPos) & 1);
 }
 
+// Print Register Values to Serial Output =
+// Can be used to Manually Check the Current Configuration of Device
+void ADXL350::printAllRegister()
+{
+	byte _b;
+	Serial.print("0x00: ");
+	read(0x00, 1, &_b);
+	printByte(_b);
+	for (int i = 29; i <= 57; i++){
+		Serial.print("0x");
+		Serial.print(i, HEX);
+		Serial.print(": ");
+		read(i, 1, &_b);
+		printByte(_b);  
+	}
+}
 
+void ADXL350::printRegister(byte address)
+{
+	byte _b;
+	Serial.print("REG 0x");
+	Serial.print(address, HEX);
+	Serial.print(": ");
+	read(address, 1, &_b);
+	printByte(_b);
+}
+
+void ADXL350::printByte(byte val)
+{
+	int i;
+	Serial.print("B");
+	for(i=7; i>=0; i--){
+		Serial.print(val >> i & 1, BIN);
+	}
+	Serial.println("");
+}
 /* --------------------------------------------------------------------- */
 /* -------------------- APPLICATION SPECIFIC --------------------------- */
 /* --------------------------------------------------------------------- */
@@ -496,3 +452,66 @@ void ADXL350::autoCalibrate()
 
 	write(ADXL350_OFSY, offset);
 }
+
+// Set up activity and double tap interupt
+// TODO poigrej se mal sz vrednostmi
+void ADXL350::initInterupt(void)
+{
+	byte _r;
+
+	// Disable all interupts before setup
+	write(ADXL350_INT_ENABLE, 0);
+
+
+	// Map activity interupt to pin INT2
+	setRegisterBit(ADXL350_INT_MAP, 4, true);
+	// Set treshold
+	write(ADXL350_THRESH_ACT, _activity_threshold);
+	// Select axis to participate in activity detection (x = 6, y = 5, z = 4)
+	_r = B01110000;
+	write(ADXL350_ACT_INACT_CTL, _r);
+
+
+	// Map double tap interupt to pin INT2
+	setRegisterBit(ADXL350_INT_MAP, 5, true);
+
+	// Set axes to participate in tap detection (last 3 bits, X, Y, Z)
+	// Now only z axis is set (tap on top of the device)
+	// Bit 44 is responsible to invalidate inacurate double taps (datasheet p. 25)
+	_r = B00001001;
+	write(ADXL350_TAP_AXES, _r);
+
+	// Set tap treshold
+	write(ADXL350_THRESH_TAP, _dt_threshold);
+	// Set duration betwen two taps
+	write(ADXL350_DUR, _dt_duration);
+	// Set latency between two taps
+	write(ADXL350_LATENT, _dt_latent);
+	// Set window for second tap
+	write(ADXL350_WINDOW, _dt_window);
+
+	// Enable only those two interupts 
+	_r = B00110000;
+	write(ADXL350_INT_ENABLE, _r);
+}
+
+// Interupt bit is cleared when SOURCE register is read
+// 16 means activity, 32 means double tap
+byte ADXL350::getInterupt(void)
+{
+	byte _r;
+	read(ADXL350_INT_SOURCE, 1, &_r);
+
+	// If double tap bit is set
+	if((_r & B00100000) == B00100000){
+		return 2;
+	}	
+	// If activity bit is set
+	else if((_r & B00010000) == B00010000){
+		return 1;
+	}
+	else{
+		return _r;
+	}
+}
+

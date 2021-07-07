@@ -6,7 +6,8 @@ class ADXL350 {
         ADXL350();
         void begin();
         void setup();
-        void setup(int16_t off_x, int16_t off_y, int16_t off_z);
+        void setup(int16_t off_x, int16_t off_y, int16_t off_z);     
+
         void getAccRaw(int16_t *x, int16_t *y, int16_t *z) ;
         void getAcc(float *x, float *y, float *z);
         void getInclination(float *pitch, float *roll);
@@ -15,20 +16,51 @@ class ADXL350 {
         void getRange(byte* rangeSetting);
         void setRange(int val);
         void setDataRate(int val);
-        void printAllRegister();
+        void enterSleepMode(void);
+        void exitSleepMode(void);
 
         void calibrate();
         void autoCalibrate();
+        void initInterupt(void);
+        byte getInterupt(void);
+
+        void printAllRegister();
 
     private:
         byte _buff[6] ;		//	6 Bytes Buffer
         double _range_gain = 0.00390625;  // Default range
 
+
+        /* ACTIVITY INTERUPT CONFIG
+         * Activity bit is set when value is larger than TRESH_ACT register
+         * Threshold value is unsigned byte (8 bits) in scale of 31.2 mg/LSB
+         */
+        byte _activity_threshold = 0x64;    // 3g          
+
+        /*
+         * DOUBLE TAP INTERUPT CONFIG
+         * Int is set when:
+         * value greater than THRESH_TAP		(31.2 mg/LSB)
+         * occurs les than DUR					(625 us/LSB)
+         * with second tap after LATENT			(1.25 ms/LSB)	
+         * but within the time in WINDOW		(1.25 ms/LSB)
+         */ 
+        byte _dt_threshold = 0x64;          // 3g       50
+        byte _dt_duration = 0x10;           // 10ms     15
+        byte _dt_latent = 0x64;             // 125ms    80
+        byte _dt_window = 0x64;             // 125ms    100
+
+
+        // I2C communication
         void write(byte _address, byte _val);
         void read(byte _address, int _num, byte _buff[]);
         void setRegisterBit(byte regAdress, int bitPos, bool state);
 	    bool getRegisterBit(byte regAdress, int bitPos);  
 
+        // Debug - print register values
+        
+        void printRegister(byte address);
+        void printByte(byte val);
 };
 void print_byte(byte val);
 
