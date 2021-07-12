@@ -1,11 +1,119 @@
 #include <Arduino.h>
 
 // FreeRTOS example
+// a higher priority number means a task is more important (24 - most important)
+
+// SUSPEND - suspend the task until it is resumed. Tasks can suspend each other
+// BLOCK - block the task until some event (or timeout)...block with portMAX_DELAY basically suspends the task. Task can only block itself. DELAY is a cind of blocking
+// DELETE - remove task from kernel management
+// RESUME - resume suspended task (if resumed task has higher priority it will preemt the running task or else staied in ready state)
+
+
+// Toggle built in led
+TaskHandle_t task_led_handle = NULL;
+
+void toggleLED(void * parameter) {
+  
+	while(1){
+
+		digitalWrite(LED_BUILTIN, HIGH);
+		// Pause the task for 500ms
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+		digitalWrite(LED_BUILTIN, LOW);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+	}
+}
+
+
+// Task that counts seconds
+TaskHandle_t task_count_handle = NULL;
+
+void count( void *param) {
+	int counter = 0;
+
+	while(1){
+		Serial.print("Counter value: ");
+		Serial.println(counter++);
+
+
+		if(counter == 10 && task_led_handle != NULL){
+			Serial.println("Count task suspending led task");
+      		vTaskSuspend(task_led_handle);
+  		}
+		
+		if(counter == 15 && task_led_handle != NULL){
+			Serial.println("Count task resuming led task");
+      		vTaskResume(task_led_handle);
+  		}
+
+		// Delay fot 1 second
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+}
+
+// Task that only does one thing end exits
+void onceTask(void *param) {
+
+	Serial.println("Task that runs only once!");
+
+	// Delete task - passing NULL will delete itself
+	vTaskDelete(NULL);
+}
+
+// Task to check the core 
+void checkCore(void *param) {
+	while(1){
+		Serial.print("Task running on core:");
+		Serial.println(xPortGetCoreID());
+		// Pause the task for 1000 ms
+  		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+}
+
+// Super important task
+void superImportantTask(){
+    vTaskSuspendAll();
+
+    // Do something really important here
+    // (Code that's timing sensitive and should
+    // not be interrupted by FreeRTOS)
+
+    // Resume all tasks again
+    xTaskResumeAll();
+}
+
+
+
+
+
+
+
+
 
 void setup() {
+	Serial.begin(9600);
+
+	pinMode(LED_BUILTIN, OUTPUT);
+
+	
+	xTaskCreate(
+		toggleLED,		// Function
+		"Toggle LED",	// Name (debugging purposes)
+		1000,			// Stack size in bytes
+		NULL,			// Parameters to pass
+		1,				// Priority
+		&task_led_handle			// Handler
+	);
+
+	xTaskCreate(onceTask, "Once", 500, NULL, 10, NULL);
+
+	// Create task pinned to core - additional (last) argument choses the core (0/1)
+	xTaskCreatePinnedToCore(checkCore, "Core", 1000, NULL, 1, NULL, 0);
+
 
 }
 
+// Loop function is hooked to IDLE task - will run when CPU is IDLE
 void loop() {
 
 }
