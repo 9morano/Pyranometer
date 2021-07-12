@@ -4,9 +4,10 @@ class ADXL350 {
 
     public:
         ADXL350();
-        void begin();
         void setup();
         void setup(int16_t off_x, int16_t off_y, int16_t off_z);     
+        void begin();
+        void standby();
 
         void getAccRaw(int16_t *x, int16_t *y, int16_t *z) ;
         void getAcc(float *x, float *y, float *z);

@@ -7,7 +7,7 @@ Configure device while in stand by mode, only then enter measurement mode with b
 #include "ADXL350.h"
 #include <Wire.h>
 
-#define ADXL350_DEVICE      (0x53)    // Device Address for ADXL345
+#define ADXL350_DEVICE      (0x53)    // Device Address for ADXL350
 #define ADXL350_DATA_NUM    (6)       // Number of bytes to read (2 bytes per axis)
 
 ADXL350::ADXL350()
@@ -25,9 +25,8 @@ void ADXL350::setup()
     }
 	delay(100);
 
-	// Go into standby mode
-	write(ADXL350_POWER_CTL, 0);
-	setRegisterBit(ADXL350_POWER_CTL, 3, false);
+	// Go into standby mode to setup the device
+	standby();
 }
 
 void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
@@ -38,8 +37,7 @@ void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 	delay(100);
 
 	// Go into standby mode
-	write(ADXL350_POWER_CTL, 0);
-	setRegisterBit(ADXL350_POWER_CTL, 3, false);
+	standby();
 
 	// Set offset values
 	write(ADXL350_OFSX, off_x);
@@ -55,11 +53,10 @@ void ADXL350::begin()
 }
 
 // Enter standby mode (low power 0.1uA but no measurements are available and interupts are disabled)
-// TODO testjrej če so res interupti disejblani al so sam meritve..ni tku nujnu..
-//void ADXL350::standby()
-//{
-//	setRegisterBit(ADXL350_POWER_CTL, 3, false);
-//}
+void ADXL350::standby()
+{
+	setRegisterBit(ADXL350_POWER_CTL, 3, false);
+}
 
 // Get raw acc measurements
 void ADXL350::getAccRaw(int16_t *x, int16_t *y, int16_t *z)
@@ -129,18 +126,15 @@ void ADXL350::setRange(int val)
 			_s = B00000000; 
 		case 2:  
 			_range_gain = 0.00390625;
-			_s = B00000000; 	// TODO: popravi na 01
+			_s = B00000001;
 			break;
 		case 4:  
 			_range_gain = 0.0078125;
-			_s = B00000001; 	// TODO: popravi na 10
+			_s = B00000010;
 			break;
 		case 8:  
 			_range_gain = 0.015625;
-			_s = B00000010; 	// TODO: popravi na 11
-			break;
-		case 16: 
-			_s = B00000011; 	// TODO: zbrisi ven
+			_s = B00000011;
 			break;
 		default: 
 			return;
@@ -324,7 +318,7 @@ void ADXL350::calibrate()
 	// Set data rate to 100 Hz
 	setDataRate(100);
 	// Set range to +-1g 
-	setRange(2); // TODO - nastavi na 1
+	setRange(1);
 
 	Serial.println("Calibrating ADXL350 device...to exit, coment out the function 'calibrate()'");
 	
@@ -342,9 +336,9 @@ void ADXL350::calibrate()
 		avg_x = avg_x / 100;
 		avg_y = avg_y / 100;
 
-		err_z = avg_z - 256;	// TODO - nastavi na 512
-		err_x = avg_x - 256;	// TODO - nastavi na 512
-		err_y = avg_y - 256;	// TODO - nastavi na 512
+		err_z = avg_z - 512;
+		err_x = avg_x - 512;
+		err_y = avg_y - 512;
 		offset_z = round(err_z/4);
 		offset_x = round(err_x/4);
 		offset_y = round(err_y/4);
@@ -373,7 +367,7 @@ void ADXL350::autoCalibrate()
 	// Set data rate to 100 Hz
 	setDataRate(100);
 	// Set range to +-1g 
-	setRange(2); // TODO - nastavi na 1
+	setRange(1);
 
 
 	/* --------------------- Z-axis ------------------------------------ */
@@ -393,7 +387,7 @@ void ADXL350::autoCalibrate()
 	Serial.print("Average z = ");
 	Serial.println(avg);
 
-	err = avg - 256;	// TODO - nastavi na 512
+	err = avg - 512;
 	offset = round(err/4);
 	offset *= -1;
 
@@ -418,7 +412,7 @@ void ADXL350::autoCalibrate()
 	Serial.print("Average x = ");
 	Serial.println(avg);
 
-	err = avg - 256;	// TODO - nastavi na 512
+	err = avg - 512;
 	offset = round(err/4);
 	offset *= -1;
 
@@ -443,7 +437,7 @@ void ADXL350::autoCalibrate()
 	Serial.print("Average y = ");
 	Serial.println(avg);
 
-	err = avg - 256;	// TODO - nastavi na 512
+	err = avg - 512;
 	offset = round(err/4);
 	offset *= -1;
 
