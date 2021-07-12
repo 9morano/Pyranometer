@@ -8,10 +8,14 @@
 // DELETE - remove task from kernel management
 // RESUME - resume suspended task (if resumed task has higher priority it will preemt the running task or else staied in ready state)
 
+// If one task has while(1) loop, scheduler will use the other core for execution ... but watchdog will trigger exception and restart the esp32
+
+TaskHandle_t task_led_handle = NULL;
+TaskHandle_t task_core_handle = NULL;
+TaskHandle_t task_count_handle = NULL;
+
 
 // Toggle built in led
-TaskHandle_t task_led_handle = NULL;
-
 void toggleLED(void * parameter) {
   
 	while(1){
@@ -26,8 +30,6 @@ void toggleLED(void * parameter) {
 
 
 // Task that counts seconds
-TaskHandle_t task_count_handle = NULL;
-
 void count( void *param) {
 	int counter = 0;
 
@@ -36,9 +38,10 @@ void count( void *param) {
 		Serial.println(counter++);
 
 
-		if(counter == 10 && task_led_handle != NULL){
+		if(counter == 10 && task_led_handle != NULL && task_count_handle){
 			Serial.println("Count task suspending led task");
       		vTaskSuspend(task_led_handle);
+			vTaskSuspend(task_core_handle);
   		}
 		
 		if(counter == 15 && task_led_handle != NULL){
@@ -51,6 +54,7 @@ void count( void *param) {
 	}
 }
 
+
 // Task that only does one thing end exits
 void onceTask(void *param) {
 
@@ -59,6 +63,8 @@ void onceTask(void *param) {
 	// Delete task - passing NULL will delete itself
 	vTaskDelete(NULL);
 }
+
+
 
 // Task to check the core 
 void checkCore(void *param) {
@@ -92,6 +98,7 @@ void superImportantTask(){
 
 void setup() {
 	Serial.begin(9600);
+	delay(2000);
 
 	pinMode(LED_BUILTIN, OUTPUT);
 
@@ -106,14 +113,22 @@ void setup() {
 	);
 
 	xTaskCreate(onceTask, "Once", 500, NULL, 10, NULL);
+	xTaskCreate(count, "Count", 1000, NULL,  1, &task_count_handle);
 
 	// Create task pinned to core - additional (last) argument choses the core (0/1)
-	xTaskCreatePinnedToCore(checkCore, "Core", 1000, NULL, 1, NULL, 0);
+	xTaskCreatePinnedToCore(checkCore, "Core", 1000, NULL, 1, &task_core_handle, 0);
+
 
 
 }
 
 // Loop function is hooked to IDLE task - will run when CPU is IDLE
+// It has lowest priority and will run only when CPU has no other things to do
+// Should be called here and there to ensure deleted tasks free their memory (done here)
 void loop() {
+	//Serial.println("Loop");
+	//vTaskDelay(100 / portTICK_PERIOD_MS);
+
+	//Serial.println(uxTaskPriorityGet(NULL));
 
 }
