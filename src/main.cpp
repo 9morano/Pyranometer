@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "project-config.h"
 
 // FreeRTOS example
 // a higher priority number means a task is more important (24 - most important)
@@ -99,7 +100,7 @@ void superImportantTask(){
 
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(SERIAL_BAUDRATE);
 	delay(2000);
 
 	
