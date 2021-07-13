@@ -17,6 +17,8 @@ TaskHandle_t task_count_handle = NULL;
 
 // Toggle built in led
 void toggleLED(void * parameter) {
+
+	pinMode(LED_BUILTIN, OUTPUT);
   
 	while(1){
 
@@ -100,7 +102,7 @@ void setup() {
 	Serial.begin(9600);
 	delay(2000);
 
-	pinMode(LED_BUILTIN, OUTPUT);
+	
 
 	
 	xTaskCreate(
@@ -119,7 +121,7 @@ void setup() {
 	xTaskCreatePinnedToCore(checkCore, "Core", 1000, NULL, 1, &task_core_handle, 0);
 
 
-
+	// vTaskStartScheduler is automatically called here!
 }
 
 // Loop function is hooked to IDLE task - will run when CPU is IDLE
