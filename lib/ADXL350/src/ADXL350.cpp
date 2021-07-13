@@ -9,6 +9,8 @@ Configure device while in stand by mode, only then enter measurement mode with b
 
 #define ADXL350_DEVICE      (0x53)    // Device Address for ADXL350
 #define ADXL350_DATA_NUM    (6)       // Number of bytes to read (2 bytes per axis)
+#define SDA_PIN				(26) 			
+#define SCL_PIN				(27)		
 
 ADXL350::ADXL350()
 {
@@ -20,7 +22,7 @@ ADXL350::ADXL350()
 
 void ADXL350::setup()
 {
-	if(!Wire.begin()){
+	if(!Wire.begin(SDA_PIN, SCL_PIN)){
         Serial.println("I2C error...");
     }
 	delay(100);
@@ -31,7 +33,7 @@ void ADXL350::setup()
 
 void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 {	
-	if(!Wire.begin()){
+	if(!Wire.begin(SDA_PIN, SCL_PIN)){
         Serial.println("I2C error...");
     }
 	delay(100);
