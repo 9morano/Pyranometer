@@ -7,6 +7,8 @@
 
 ADXL350 adxl = ADXL350();
 
+TaskHandle_t task_handle_measure = NULL;
+
 void measureTask(void *param) {
 
 	// Init accelerometer (defines in project-config.h)
@@ -100,10 +102,21 @@ void setup() {
 
 	// Turn the WiFi and the server ON
 	toggleWiFi(1);
+
+	xTaskCreate(
+		measureTask,		// Function
+		"Measurement task",	// Name (debugging purposes)
+		1000,				// Stack size in bytes
+		NULL,				// Parameters to pass
+		10,					// Priority
+		&task_handle_measure			// Handler
+	);
 }
 
 
 
 void loop() {
 
+	SERVER_cleanup();
+	vTaskDelay(100 / portTICK_PERIOD_MS);
 }
