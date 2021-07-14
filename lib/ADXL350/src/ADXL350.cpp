@@ -43,8 +43,8 @@ void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 
 	// Set offset values
 	write(ADXL350_OFSX, off_x);
-	write(ADXL350_OFSX, off_y);
-	write(ADXL350_OFSX, off_z);
+	write(ADXL350_OFSY, off_y);
+	write(ADXL350_OFSZ, off_z);
 }
 
 // Enter measurement mode
@@ -125,7 +125,8 @@ void ADXL350::setRange(int val)
 	switch (val) {
 		case 1:
 			_range_gain = 0.001953125;
-			_s = B00000000; 
+			_s = B00000000;
+			break;
 		case 2:  
 			_range_gain = 0.00390625;
 			_s = B00000001;
@@ -317,15 +318,21 @@ void ADXL350::calibrate()
 	int err_x, err_y, err_z;
 	int offset_x, offset_y, offset_z;
 
+/*
+	// Range must be setted up to +-1g
+	standby();
 	// Set data rate to 100 Hz
 	setDataRate(100);
 	// Set range to +-1g 
 	setRange(1);
+	begin();
+
+*/	
 
 	Serial.println("Calibrating ADXL350 device...to exit, coment out the function 'calibrate()'");
+	Serial.println("Put device in desired position!");
 	
 	while(1){
-		Serial.println("Put device in desired position!");
 		Serial.println("Obtaining data ...");
 		for(uint8_t i=0; i<100; i++){
 			getAccRaw(&x, &y, &z);
@@ -337,6 +344,13 @@ void ADXL350::calibrate()
 		avg_z = avg_z / 100;
 		avg_x = avg_x / 100;
 		avg_y = avg_y / 100;
+
+		Serial.print("Measured average:  X=");
+		Serial.print(avg_x);
+		Serial.print(" Y=");
+		Serial.print(avg_y);
+		Serial.print(" Z=");
+		Serial.println(avg_z);
 
 		err_z = avg_z - 512;
 		err_x = avg_x - 512;

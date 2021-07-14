@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "project-config.h"
+#include "ADXL350.h"
 
 // FreeRTOS example
 // a higher priority number means a task is more important (24 - most important)
@@ -15,6 +16,33 @@ TaskHandle_t task_led_handle = NULL;
 TaskHandle_t task_core_handle = NULL;
 TaskHandle_t task_count_handle = NULL;
 
+
+ADXL350 adxl = ADXL350();
+
+void measureTask(void *param) {
+
+	// Init accelerometer (defines in project-config.h)
+	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
+	adxl.setRange(1);
+  	adxl.setDataRate(100);
+	adxl.begin();
+
+	float pitch = 0, roll = 0;
+
+	while(1){
+		// Get inclination
+		adxl.getInclination(&pitch, &roll);
+
+		// Print it
+		Serial.print("Pitch and roll: ");
+		Serial.print(pitch);
+		Serial.print(" ");
+		Serial.println(roll);
+
+		// Delay for 500ms
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+	}
+}
 
 // Toggle built in led
 void toggleLED(void * parameter) {

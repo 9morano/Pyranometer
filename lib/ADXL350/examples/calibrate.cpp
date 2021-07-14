@@ -1,13 +1,19 @@
 #include <Arduino.h>
 #include "Wire.h"
 #include "ADXL350.h"
+#include "project-config.h"
+
+// Calculated offset for prototrip board
+#define ACC_OFFSET_X                (-3)
+#define ACC_OFFSET_Y                (0)
+#define ACC_OFFSET_Z                (12)
 
 ADXL350 adxl = ADXL350();
 
 void setup() {
-	Serial.begin(9600); 
+	Serial.begin(SERIAL_BAUDRATE); 
 
-	delay(100);
+	delay(2000);
 
 	// TODO: First calibrate device in the case / box and put
 	// measured values into the setup function
@@ -18,7 +24,7 @@ void setup() {
 	// You can use auto test function
 	//adxl.autoCalibrate();
 
-	adxl.setup();
+	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
 	adxl.setRange(1);
   adxl.setDataRate(100);
 
@@ -32,28 +38,29 @@ void setup() {
 
 
 
-float x,y,z; 
+int16_t x,y,z; 
 float pitch = 0, roll = 0;
 
 void loop() {
 
+/*
     // Get acceleration
-	adxl.getAcc(&x, &y, &z);
+	adxl.getAccRaw(&x, &y, &z);
 	Serial.print(x);
 	Serial.print(", ");
 	Serial.print(y);
 	Serial.print(", ");
 	Serial.println(z); 
-
+*/
 	
-/*
+
     // Get inclination
 	adxl.getInclination(&pitch, &roll);
 	Serial.print("Pitch and roll: ");
 	Serial.print(pitch);
 	Serial.print(" ");
 	Serial.println(roll);
-*/
+
 
 delay(100);
 
