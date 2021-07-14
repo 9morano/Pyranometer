@@ -13,32 +13,8 @@
 #include <ESPAsyncWebServer.h>
 #include "SPIFFS.h"
 #include <ArduinoJson.h>
-#include <WiFi.h>
 
 
-
-/*----------------------------------------------------------------------------------------------------
- * WIFI 
- * ----------------------------------------------------------------------------------------------------*/
-class pWIFI {
-    private:
-        WiFiAPClass w;
-        const char *ssid = "yourAP";
-        const char *password = "123456789"; //Pass must be higher than 8 characters
-
-    public:
-        uint8_t is_on = 0;
-        uint8_t init(void);
-        uint8_t APstart(void);
-        void    APstop(void);
-        String  getIP(void);
-};
-
-
-
-/*----------------------------------------------------------------------------------------------------
- * SERVER
- * ----------------------------------------------------------------------------------------------------*/
 #define INDEX_FILE  "/index.html"
 #define GRAPH_FILE  "/graph.html"
 #define CSS_FILE    "/src/style.css"
