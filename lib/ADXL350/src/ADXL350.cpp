@@ -106,9 +106,9 @@ void ADXL350::getInclinationLPF(float *pitch, float *roll)
 
 	getInclination(&p, &r);
 
-	// Low Pass Filter (96% old value and 6% new)
-	*pitch = 0.94 * *pitch + 0.06 * p;
-	*roll = 0.94 * *roll + 0.06 * r;
+	// Low Pass Filter (90% old value and 10% new)
+	*pitch = 0.9 * *pitch + 0.1 * p;
+	*roll = 0.9 * *roll + 0.1 * r;
 }
 
 void ADXL350::getRange(byte* rangeSetting)

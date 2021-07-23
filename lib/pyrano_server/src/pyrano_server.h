@@ -25,16 +25,21 @@
 
 
 // Definitions for possible message
-#define UPDATE_LED  (1)
-#define UPDATE_AVAL (2)
+#define UPDATE_POWER        (1)
+#define UPDATE_TEMPERATURE  (2)
+#define UPDATE_PITCH        (3)
+#define UPDATE_ROLL         (4)
 
-// Variables that can be modified through web interface
-// Must be global in main INO file, linked to this file 
-extern uint8_t ledState;
-extern int pot_val;
+// Global varables shared with main code and server code
+extern char global_time[9];
+extern SemaphoreHandle_t time_mutex;
+
+extern uint8_t server_state;
+extern SemaphoreHandle_t server_mutex;
 
 
-// "Public" function for use in main INO file
+
+// Function definitions
 uint8_t SERVER_init(void);
 uint8_t SERVER_start(void);
 uint8_t SERVER_stop(void);
@@ -42,8 +47,6 @@ void SERVER_cleanup(void);
 
 uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value);
 
-
-// "Private" functions - used only in server.cpp
 uint8_t SERVER_check4html(void);
 String SERVER_processor(const String& var);
 

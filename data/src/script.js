@@ -1,20 +1,20 @@
 
-
-var gateway = `ws://${window.location.hostname}/ws`;
+/*--------------------------------------------------------------------------------------------
+ * GLOBAL VARIABLES
+ *--------------------------------------------------------------------------------------------*/
 var websocket;
-window.addEventListener('load', onLoad);
 
-function onLoad(event) {
-    initWebSocket();
-    initButton();
-}
 
+/*--------------------------------------------------------------------------------------------
+ * WEB SOCKETS 
+ *--------------------------------------------------------------------------------------------*/
 function initWebSocket() {
+    var gateway = `ws://${window.location.hostname}/ws`;
     console.log('Trying to open a WebSocket connection...');
     websocket = new WebSocket(gateway);
     websocket.onopen    = onOpen;
     websocket.onclose   = onClose;
-    websocket.onmessage = onReceiveMessage;
+    websocket.onmessage = receiveMessage;
 }
 
 function onOpen(event) {
@@ -36,28 +36,24 @@ function onClose(event) {
     setTimeout(initWebSocket, 2000);
 }
 
-function onReceiveMessage(event) {
+function receiveMessage(event) {
     // Convert from string to JSON
     let data = JSON.parse(event.data);
 
     //console.log(data);
 
-    var key = Object.keys(data);
-
     switch(data.action) {
-        case  "ledstate":
+        case  "power":
             var state;
-            if (data.value == "1"){
-                state = "ON";
-            }
-            else{
-                state = "OFF";
-            }
-            document.getElementById('state').innerHTML = state;
+            $("#power").text(data.value);
             break;
-    
-        case "aval":
-            document.getElementById("a_val").innerHTML = data.value;
+
+        case "pitch":
+            $("#pitch").text(data.value);
+            break;
+
+        case "roll":
+            $("#roll").text(data.value);
             break;
     }    
 }
@@ -68,22 +64,42 @@ function sendMessage(action, value) {
 }
 
 
-
-function initButton() {
-    // When button is clicked, function toggle is called
-    document.getElementById('button').addEventListener('click', toggleLed);
+/*--------------------------------------------------------------------------------------------
+ * BUTTONS
+ *--------------------------------------------------------------------------------------------*/
+function turnServerOff(){
+    console.log("Turn the server off!");
+    sendMessage("off", 0);
+    // TODO close the browser
 }
 
-function toggleLed(){
-    
-    let state = document.getElementById('state').innerHTML;
-    var val = 0;
 
-    if(state == "ON"){
-        val = 0;
-    } else {
-        val = 1;
-    }
-
-    sendMessage("ledstate", val);
+/*--------------------------------------------------------------------------------------------
+ * TIME UPDATE
+ *--------------------------------------------------------------------------------------------*/
+// Function to update time on HTML site periodically every second
+function updateClock(){
+    var now = new Date();
+    var time = now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds();
+    $("#time").text(time);
+    setTimeout(updateClock, 1000);
 }
+
+
+/*--------------------------------------------------------------------------------------------
+ * MAIN
+ *--------------------------------------------------------------------------------------------*/
+//Call this function when page loads
+$(document).ready(function(){
+    console.log("Hello there!");
+
+    // Start the function to update the time
+    updateClock();
+
+    // Init buttons
+    $("#btn_off").click(turnServerOff);
+
+    // Init websockets
+    initWebSocket();
+
+});

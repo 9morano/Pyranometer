@@ -57,17 +57,17 @@ uint8_t SERVER_init(void)
     // When client sends request for JS file
     srvr.on("/src/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
         {
-            request->send(SPIFFS, JS_FILE, "text/html");
+            request->send(SPIFFS, JS_FILE, "text/javascript");
         }
     );
     srvr.on("/src/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
         {
-            request->send(SPIFFS, JS_BS_FILE, "text/html");
+            request->send(SPIFFS, JS_BS_FILE, "text/javascript");
         }
     ); 
     srvr.on("/src/jquery.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
         {
-            request->send(SPIFFS, JS_JQ_FILE, "text/html");
+            request->send(SPIFFS, JS_JQ_FILE, "text/javascript");
         }
     );   
 
@@ -159,7 +159,7 @@ void SERVER_cleanup(void)
 // It is used only the first time client opens html site to display variable strings
 String SERVER_processor(const String& var)
 {
-    if(var == "STATE"){
+    /*if(var == "STATE"){
         if (ledState){
             return "ON";
         }
@@ -170,7 +170,7 @@ String SERVER_processor(const String& var)
 
     if(var == "A_VAL"){
         return String(pot_val);
-    }
+    }*/
 
     return String();
 }
@@ -216,21 +216,33 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
 
         const char *action = json["action"];
 
-        if (strcmp(action, "ledstate") == 0){
+        if (strcmp(action, "off") == 0){
             
             uint8_t value = json["value"];
-            // Global variable
-            ledState = value;
+
+            if(value == 0){
+                Serial.println("Turn off the server.");
+                xSemaphoreTake(server_mutex, portMAX_DELAY);
+                server_state = 0;
+                xSemaphoreGive(server_mutex);
+            }
 
             // Notify all clients about the change
-            SERVER_sendWebSocketMessage(UPDATE_LED, ledState);
-            Serial.println("Received new led state");
-            Serial.println(value);         
+            //SERVER_sendWebSocketMessage(UPDATE_LED, ledState);
         }
         else if (strcmp(action, "time") == 0){
             const char *time = json["value"];
             Serial.print("Received clients time:");
             Serial.println(time);
+
+            xSemaphoreTake(time_mutex, portMAX_DELAY);
+            strcpy(global_time, time);
+            xSemaphoreGive(time_mutex);
+        }
+        else{
+        // TODO: zbrisi
+            Serial.print("Received unknown action from the client:");
+            Serial.print(action);
         }
 
     }
@@ -248,15 +260,24 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value){
 
     // Fill the json document
     switch (action){
-        case UPDATE_LED:
-            json["action"] = "ledstate";
+        case UPDATE_POWER:
+            json["action"] = "power";
             break;
 
-        case UPDATE_AVAL:
-            json["action"] = "aval";
+        case UPDATE_TEMPERATURE:
+            json["action"] = "temp";
+            break;
+
+        case UPDATE_PITCH:
+            json["action"] = "pitch";
+            break;
+
+        case UPDATE_ROLL:
+            json["action"] = "roll";
             break;
 
         default:
+            // TODO brisi
             Serial.printf("ERROR: Unrecognised action %i \n", action);
             return 0;
     }
