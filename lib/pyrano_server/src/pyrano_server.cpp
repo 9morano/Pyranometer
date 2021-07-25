@@ -157,6 +157,7 @@ void SERVER_cleanup(void)
 }
 
 // It is used only the first time client opens html site to display variable strings
+// TODO: remove this...return raw HTML without this processor - no need for it
 String SERVER_processor(const String& var)
 {
     /*if(var == "STATE"){
@@ -214,43 +215,52 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
             Serial.println(err.c_str());
         }
 
-        const char *action = json["action"];
+        //const char *action = json["a"];
 
-        if (strcmp(action, "off") == 0){
-            
-            uint8_t value = json["value"];
+        uint8_t action = json["a"];
 
-            if(value == 0){
-                Serial.println("Turn off the server.");
-                xSemaphoreTake(server_mutex, portMAX_DELAY);
-                server_state = 0;
-                xSemaphoreGive(server_mutex);
+        switch(action){
+
+            case SERVER_MANAGEMENT:
+            {
+                uint8_t value = json["v"];
+
+                if(value == 0){
+                    Serial.println("Turn off the server.");
+                    xSemaphoreTake(server_mutex, portMAX_DELAY);
+                    server_state = 0;
+                    xSemaphoreGive(server_mutex);
+                }
+                // Notify all clients about the change
+                //SERVER_sendWebSocketMessage(UPDATE_LED, ledState);
             }
+            break;
 
-            // Notify all clients about the change
-            //SERVER_sendWebSocketMessage(UPDATE_LED, ledState);
-        }
-        else if (strcmp(action, "time") == 0){
-            const char *time = json["value"];
-            Serial.print("Received clients time:");
-            Serial.println(time);
+            case UPDATE_TIME:
+            {
+                const char *time = json["v"];
 
-            xSemaphoreTake(time_mutex, portMAX_DELAY);
-            strcpy(global_time, time);
-            xSemaphoreGive(time_mutex);
-        }
-        else{
-        // TODO: zbrisi
-            Serial.print("Received unknown action from the client:");
-            Serial.print(action);
-        }
+                Serial.print("Received clients time:");
+                Serial.println(time);
 
+                xSemaphoreTake(time_mutex, portMAX_DELAY);
+                strcpy(global_time, time);
+                xSemaphoreGive(time_mutex);
+            }
+            break;
+
+            default:
+                // TODO brisi, ne rabim defaulta ko bo apk koncana
+                Serial.print("Received unknown action from the client:");
+                Serial.print(action);
+                break;
+        }
     }
 }
 
 
-// Action string length and value length must be max 20!
-uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value){
+// Value length must be max 18 chars
+uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     
     // Define the number of elements used in JSON document
     const uint8_t size = JSON_OBJECT_SIZE(2);
@@ -260,20 +270,10 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value){
 
     // Fill the json document
     switch (action){
-        case UPDATE_POWER:
-            json["action"] = "power";
-            break;
-
-        case UPDATE_TEMPERATURE:
-            json["action"] = "temp";
-            break;
-
-        case UPDATE_PITCH:
-            json["action"] = "pitch";
-            break;
-
-        case UPDATE_ROLL:
-            json["action"] = "roll";
+        case UPDATE_MEASUREMENT:
+        case UPDATE_GRAPH:
+            json["a"] = action;
+            json["v"] = value;
             break;
 
         default:
@@ -282,16 +282,34 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value){
             return 0;
     }
 
-    json["value"] = value;
-
-    // Define buffer for serialization of json data - char instead of Stirng, 
-    // so we use stack instead of heap. Must be big enough (count chars)...
-    // 13 for {",: ... +11 for keys ... +1 for string delimiter '/0'
-    // + 10 for action and another 10 for value
-    char data[45];
-
+    // Serialize json document and send it via WS
+    char data[38];
     size_t len = serializeJson(json, data);
     ws.textAll(data, len);
 
+    return 1;
+}
+
+uint8_t SERVER_sendUpdatedMeasurements(uint16_t power, float pitch, float roll, uint8_t temp){
+
+    /* Possible measurements and their max values:
+     * --------------
+     * power: 0000
+     * pitch: -90.0
+     * roll : -90.0
+     * temp : 70
+     * --------------
+     * together it takes 16 chars for measurements + 3 for delimiters (|)
+     * 
+     * example: {"a":1,"v":"0000|-24.0|-24.0|66.0"}
+     * there is 37 characters +1 for /0 delimiter - taking 40 just in case
+     */
+
+    char str[20];
+
+    // Store the values into one string
+    sprintf(str, "%d|%3.1f|%3.1f|%d", power, pitch, roll, temp);
+
+    SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, str);
     return 1;
 }

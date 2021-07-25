@@ -25,10 +25,7 @@
 
 
 // Definitions for possible message
-#define UPDATE_POWER        (1)
-#define UPDATE_TEMPERATURE  (2)
-#define UPDATE_PITCH        (3)
-#define UPDATE_ROLL         (4)
+enum actions{UPDATE_MEASUREMENT, UPDATE_GRAPH, SERVER_MANAGEMENT, UPDATE_TIME};
 
 // Global varables shared with main code and server code
 extern char global_time[9];
@@ -45,7 +42,8 @@ uint8_t SERVER_start(void);
 uint8_t SERVER_stop(void);
 void SERVER_cleanup(void);
 
-uint8_t SERVER_sendWebSocketMessage(uint8_t action, int value);
+uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value);
+uint8_t SERVER_sendUpdatedMeasurements(uint16_t power, float pitch, float roll, uint8_t temp);
 
 uint8_t SERVER_check4html(void);
 String SERVER_processor(const String& var);

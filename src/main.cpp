@@ -44,19 +44,19 @@ void measureTask(void *param) {
 
 		// Get inclination
 		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
-		adxl.getInclination(&pitch, &roll);
-		Serial.println(pitch);
+		adxl.getInclinationLPF(&pitch, &roll);
+		//Serial.println(pitch);
 		xSemaphoreGive(inclination_mutex);
 
 		// Delay for 100ms
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+		vTaskDelay(50 / portTICK_PERIOD_MS);
 	}
 }
 
-// Update measurements every 1 second
+// Update measurements
 void updateTask(void *param){
 
-	static float _p, _r;
+	float _p = 0, _r = 0;
 
 	while(1){
 
@@ -64,14 +64,13 @@ void updateTask(void *param){
 		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
 		_p = pitch;
 		_r = roll;
-		Serial.println(_p);
 		xSemaphoreGive(inclination_mutex);
 
-		SERVER_sendWebSocketMessage(UPDATE_PITCH, _p);
-		SERVER_sendWebSocketMessage(UPDATE_ROLL, _r);
+		SERVER_sendUpdatedMeasurements(1000, _p, _r, 0);
 
-
-		vTaskDelay(2000 / portTICK_PERIOD_MS);
+		// WebSockets on ESP32 can do max 15 emssages per second
+		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
+		vTaskDelay(200 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -155,6 +154,7 @@ void setup() {
 void loop() {
 
 	SERVER_cleanup();
+	//Serial.println("Here");
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
 
