@@ -45,7 +45,6 @@ void SERVER_cleanup(void);
 uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value);
 uint8_t SERVER_sendUpdatedMeasurements(uint16_t power, float pitch, float roll, uint8_t temp);
 
-uint8_t SERVER_check4html(void);
 String SERVER_processor(const String& var);
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);

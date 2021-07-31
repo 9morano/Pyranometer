@@ -86,54 +86,9 @@ uint8_t SERVER_init(void)
         }
     );
 
-    // Init FFS
-    status = SPIFFS.begin(true);
-
-    // Check for neccesary files in FFS
-    status &= SERVER_check4html();
+    status = 1;
 
     return status;
-}
-
-// TODO - do we need to check for existing files or not?
-uint8_t SERVER_check4html(void)
-{
-    const char *filename;
-    uint8_t html = 0, css = 0, js = 0, g = 0;
-
-    File root = SPIFFS.open("/");
-    File file = root.openNextFile();
-
-    while(file){
-        filename = file.name();
-
-        if (strcmp(filename, INDEX_FILE) == 0){
-            html = 1;
-        }
-        else if (strcmp(filename, CSS_FILE) == 0){
-            css = 1;
-        }
-        else if (strcmp(filename, JS_FILE) == 0) {
-            js = 1;
-        }
-        else if (strcmp(filename, GRAPH_FILE) == 0) {
-            g = 1;
-        }
-        else{
-            Serial.println("W: Found additional file:");
-            Serial.println(filename);
-            // TODO Delete it?
-        }
-        file = root.openNextFile();
-    }
-
-    if ((html && css) && (g && js)) {
-        return 1;
-    }
-    else {
-        Serial.printf("Found files: html %d, css %d, js %d, graf %d \n", html, css, js, g);
-        return 0;
-    }
 }
 
 
