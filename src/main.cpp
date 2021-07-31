@@ -36,9 +36,13 @@ void measureTask(void *param) {
 
 	// Init accelerometer (defines in project-config.h)
 	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
+	delay(1);
 	adxl.setRange(1);
+	delay(1);
   	adxl.setDataRate(25);
+	delay(1);
 	adxl.begin();
+	delay(1);
 
 	while(1){
 

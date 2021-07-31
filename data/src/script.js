@@ -6,12 +6,10 @@ var websocket;
 
 const action = {
 	UPDATE_MEASUREMENT: 0,
-	UPDATE_GRAPH:       1,
+	UPDATE_FILES:       1,
 	SERVER_MANAGEMENT:  2,
 	UPDATE_TIME:        3,
 }
-
-var client_connected = 0;
 
 
 /*--------------------------------------------------------------------------------------------
@@ -29,20 +27,17 @@ function initWebSocket() {
 function onOpen(event) {
     console.log('Connection opened');
 
-    client_connected += 1;
-
-    var today = new Date();
-    var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-
-    console.log("Client's time: " + time);
-
-    // Send message to the server
-    sendMessage(action.UPDATE_TIME, time);
+    if(document.URL.includes("index")){
+        var today = new Date();
+        var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+        sendMessage(action.UPDATE_TIME, time);
+    }
+    else{
+        sendMessage(action.GET_FILE, "ALL");//TODO
+    }
 }
 
 function onClose(event) {
-
-    client_connected -= 1;
 
     // If for some reason connection is closed
     console.log('Connection closed');
@@ -92,7 +87,14 @@ function sendMessage(action, value) {
 function turnServerOff(){
     console.log("Turn the server off!");
     sendMessage(action.SERVER_MANAGEMENT, 0);
-    // TODO close the browser
+
+    // TODO close the browser - doesn't work with Firefox 86 
+    var conf = confirm("Če se okno ne zapre, ga zaprite ročno!");
+    if(conf){
+        let window = open(location,'_self');
+        window.close();
+        return false;
+    }
 }
 
 
@@ -113,15 +115,22 @@ function updateClock(){
  *--------------------------------------------------------------------------------------------*/
 //Call this function when page loads
 $(document).ready(function(){
-    console.log("Hello there!");
-
-    // Start the function to update the time
-    updateClock();
 
     // Init buttons
     $("#btn_off").click(turnServerOff);
 
+    if(document.URL.includes("index")){
+        console.log("Hello there!");
+
+        // Start the function to update the time
+        updateClock();
+    }
+    else{
+        console.log("MSMNTS");
+    }
+
+
     // Init websockets
-    initWebSocket();
+    //initWebSocket();
 
 });
