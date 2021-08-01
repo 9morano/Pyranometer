@@ -31,7 +31,7 @@
     <!-- JUMBOTRON -->
     <div class="jumbotron-fluid text-center" style="height:100px">
         <h2>Piranometer</h2>
-        <p>Orodje za merjenje moči sončnega sevanja.</p> 
+        <p style="font-size: large;">Orodje za merjenje moči sončnega sevanja.</p> 
     </div>
 
     <!-- NAVIGATION -->
@@ -77,15 +77,7 @@
                 <p>Zaključi trenutno in izvedi novo: <input type="text" id="msmnt_name" value=".txt"> <button class="btn btn-secondary float-right" id="download_0">Izvedi</button></p> 
                 <br>
 
-                <h2>SHRANJENE MERITVE</h2>
-                <p><b>Meritev: </b><span id="msmnt_0">29_07_2021_0.txt</span> 
-                    <button class="btn btn-secondary float-right" id="download_0">Prenesi</button> 
-                    <button class="btn btn-secondary float-right" id="delete_0" style="margin-right: 2px;">Izbriši</button>
-                </p>
-                <p><b>Meritev: </b><span id="msmnt_1">29_07_2021_1.txt</span> 
-                    <button class="btn btn-secondary float-right" id="download_2">Prenesi</button>
-                    <button class="btn btn-secondary float-right" id="delete_0" style="margin-right: 2px;">Izbriši</button>
-                </p>                      
+                <h2 id="stored_measurements">SHRANJENE MERITVE</h2>                     
             </div>
         </div>
     </div>

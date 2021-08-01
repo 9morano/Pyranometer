@@ -6,9 +6,11 @@ var websocket;
 
 const action = {
 	UPDATE_MEASUREMENT: 0,
-	UPDATE_FILES:       1,
 	SERVER_MANAGEMENT:  2,
 	UPDATE_TIME:        3,
+	GET_FILES:          1,
+    NEW_FILE:           5,
+    DELETE_FILE:        4,
 }
 
 
@@ -33,7 +35,7 @@ function onOpen(event) {
         sendMessage(action.UPDATE_TIME, time);
     }
     else{
-        sendMessage(action.GET_FILE, "ALL");//TODO
+        sendMessage(action.GET_FILES, "ALL");//TODO
     }
 }
 
@@ -69,6 +71,11 @@ function receiveMessage(event) {
             }
             break;
 
+        case action.NEW_FILE:
+            console.log("New measurement file" + data.v);
+            addMeasurementFile(data.v);
+            break;
+
         default:
             console.log("Undefined action" + data.a);
             break;
@@ -82,7 +89,7 @@ function sendMessage(action, value) {
 
 
 /*--------------------------------------------------------------------------------------------
- * BUTTONS
+ * BUTTON - SERVER OFF
  *--------------------------------------------------------------------------------------------*/
 function turnServerOff(){
     console.log("Turn the server off!");
@@ -110,6 +117,39 @@ function updateClock(){
 }
 
 
+
+/*--------------------------------------------------------------------------------------------
+ * MEASUREMENTS
+ *--------------------------------------------------------------------------------------------*/
+function addMeasurementFile(filename){
+
+    var del_btn = $('<button class="btn btn-secondary float-right" style="margin-right: 2px;"/>').text("Izbriši").click(function(){
+        deleteMeasurementFile(filename);
+    });
+    var dl_btn  = $('<button class="btn btn-secondary float-right"/>').text("Prenesi").click(function(e){
+        e.preventDefault();
+        downloadMeasurementsFile(filename);
+    });
+    var m = $('<p id="' + filename + '"><b>Meritev: </b>' + filename + '</p>');
+
+    m.append(dl_btn).append(del_btn);
+
+    $("#stored_measurements").after(m);
+}
+
+function deleteMeasurementFile(filename){
+    console.log("Izbrisi " + filename);
+
+    document.getElementById(filename).remove();
+    sendMessage(action.DELETE_FILE, filename);
+}
+
+function downloadMeasurementsFile(filename){
+    console.log("Prenesi " + filename);
+    window.location.href = "/" + filename;
+}
+
+
 /*--------------------------------------------------------------------------------------------
  * MAIN
  *--------------------------------------------------------------------------------------------*/
@@ -129,8 +169,10 @@ $(document).ready(function(){
         console.log("MSMNTS");
     }
 
+    addMeasurementFile("01_08_2021_0.txt");
+    addMeasurementFile("01_08_2021_1.txt");
 
     // Init websockets
-    //initWebSocket();
+    initWebSocket();
 
 });
