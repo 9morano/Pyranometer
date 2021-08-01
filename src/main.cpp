@@ -2,6 +2,7 @@
 #include "project-config.h"
 #include "pyrano_server.h"
 #include "pyrano_wifi.h"
+#include "pyrano_fs.h"
 #include "ADXL350.h"
 
 // Global variable to store the state of the server
@@ -22,6 +23,7 @@ static SemaphoreHandle_t inclination_mutex;
 // Create objects
 ADXL350 adxl = ADXL350();	// adxl to controll the accelerometer
 pyranoWIFI wifi;			// wifi to controll radio and access point
+FileSystem m_file;
 
 
 // Task handles for task controll
@@ -117,6 +119,13 @@ void serverTask(void *param){
 void setup() {
 	Serial.begin(SERIAL_BAUDRATE);
 	delay(2000);
+	m_file.setup();
+
+	// TODO: 
+	m_file.createFile("01_08_2021");
+	m_file.printMeasurementsFiles();
+
+
 
 	
 

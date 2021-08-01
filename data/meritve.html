@@ -1,13 +1,14 @@
 <!DOCTYPE HTML><html>
 <head>
+    <meta charset="UTF-8">
     <title>Pyranometer</title>
 
-    <script src="/script.js"></script>
-    <script src="/jquery.min.js"></script> <!-- version 3.6.0 -->
-    <script src="/bootstrap.bundle.min.js"></script>
+    <script src="/src/jquery.min.js"></script> <!-- version 3.6.0 -->
+    <script src="/src/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/src/bootstrap.min.css"> 
     
-    <link rel="stylesheet" type="text/css" href="/style.css">
-    <link rel="stylesheet" type="text/css" href="/bootstrap.min.css"> 
+    <script  src="/src/script.js"></script>
+    <link rel="stylesheet" type="text/css" href="/src/style.css">
 
     <!-- Dynamic window width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -63,7 +64,7 @@
                 <br>
                 <h2>TRENUTNA MERITEV</h2>
                 <p><b>Meritev: </b><span id="msmnt_0">31_07_2021_0.txt</span></p>
-                <p>Zaključi trenutno in izvedi novo: <input type="text" id="msmnt_name" value=".txt"> <button class="btn btn-secondary float-right" id="download_0">Izvedi</button></p> 
+                <p>Zaključi trenutno in izvedi novo: <input type="text" id="msmnt_name" value="">.txt <button class="btn btn-secondary float-right" id="download_0">Izvedi</button></p> 
                 <br>
 
                 <h2 id="stored_measurements">SHRANJENE MERITVE</h2>          

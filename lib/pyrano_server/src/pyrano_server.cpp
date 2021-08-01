@@ -37,9 +37,9 @@ uint8_t SERVER_init(void)
         }
     );
     // When client sends request for graph site
-    srvr.on("/graph.html", HTTP_GET, [](AsyncWebServerRequest *request)
+    srvr.on("/meritve.html", HTTP_GET, [](AsyncWebServerRequest *request)
         {
-            request->send(SPIFFS, GRAPH_FILE, "text/html");
+            request->send(SPIFFS, MEASUREMENTS_FILE, "text/html");
         }
     );
     // When client sends request for ccs file
@@ -72,11 +72,18 @@ uint8_t SERVER_init(void)
     );   
 
     // When client wants to download a file of measurements
+    // /download?file=<ime_datoteke.txt>
     srvr.on("/download", HTTP_GET, [](AsyncWebServerRequest *request)
-        {
-            request->send(SPIFFS, "/measurements.txt", "text/plain", true); // true enables download option
+        { 
+            String input_filename;
+            Serial.print("User requested for measurements:");
+            if(request->hasParam("file")){
+                input_filename = request->getParam("file")->value();
+                input_filename = "/measure/" + input_filename;
+                Serial.println(input_filename);
+                request->send(SPIFFS, input_filename, "text/plain", true); // true enables download option
+            }
         }
-    // TODO: add a SD card
     );
 
     // When client request for unknown page, give him error 404
@@ -186,12 +193,29 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                     server_state = 0;
                     xSemaphoreGive(server_mutex);
                 }
-                // Notify all clients about the change
-                //SERVER_sendWebSocketMessage(UPDATE_LED, ledState);
+                else if(value == 1){
+                    // Get measurement filenames and send them to the client
+                    File measurements = SPIFFS.open("/measure");
+
+                    while(true){
+                        File file = measurements.openNextFile();
+                        
+                        if(!file){
+                            break;
+                        }
+
+                        // You could also get the size of the file...
+                        const char *str = file.name();
+
+                        // With +9 remove "/measure/" from the filename
+                        SERVER_sendWebSocketMessage(UPDATE_FILENAME, str+9);
+                        file.close();
+                    }
+                }
             }
             break;
 
-            case UPDATE_TIME:
+            case NEW_TIME:
             {
                 const char *time = json["v"];
 
@@ -201,6 +225,22 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                 xSemaphoreTake(time_mutex, portMAX_DELAY);
                 strcpy(global_time, time);
                 xSemaphoreGive(time_mutex);
+            }
+            break;
+
+            case NEW_FILE:
+                // Inform main context about new filename
+                // Confirm to the client
+
+            break;
+
+            case DELETE_FILE:
+            {
+                const char *path = json["v"];
+                char p[30] = "/measure/";
+                strcat(p, path);
+                Serial.printf("User deleted file %s \n", p);
+                SPIFFS.remove(p);
             }
             break;
 
@@ -226,7 +266,7 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     // Fill the json document
     switch (action){
         case UPDATE_MEASUREMENT:
-        case UPDATE_GRAPH:
+        case UPDATE_FILENAME:
             json["a"] = action;
             json["v"] = value;
             break;

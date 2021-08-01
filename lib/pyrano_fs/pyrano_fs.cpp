@@ -2,13 +2,11 @@
 #include "pyrano_fs.h"
 
 
-uint8_t FileSystem::setup(void)
+void FileSystem::setup(void)
 {
     if(!SPIFFS.begin()){
         Serial.println("Error while mounting SPIFFS");
-        return 0;
     }
-    return 1;
 }
 
 void FileSystem::printInfo(void)
@@ -58,7 +56,6 @@ void FileSystem::printMeasurementsFiles(void)
         File file = measurements.openNextFile();
         
         if(!file){
-            Serial.println("None!");
             break;
         }
 
@@ -69,19 +66,45 @@ void FileSystem::printMeasurementsFiles(void)
     }
 }
 
-void FileSystem::createDir(void)
-{
-    if (!SPIFFS.mkdir(_measurement_dir)){
-        Serial.println("mkdir failed");
-    }
-}
 
-void FileSystem::createFile(const char *path)
+
+uint8_t FileSystem::createFile(const char *filename)
 {
-    File f = SPIFFS.open("measure/"+path, FILE_WRITE);
-    if(!f){
-        Serial.printf("Failed to create measurements %s file \n", path);
+    char path[30];
+    char appendix[7] = ".txt";
+    uint8_t success = 0;
+
+    for(uint8_t i = 0; i<5; i++){
+        // path = /measure/filename.txt
+        strcat(path, _measurement_dir);
+        strcat(path, filename);
+        strcat(path, appendix);
+
+        File check = SPIFFS.open(path, FILE_READ);
+
+        // File with that name doesn't exists
+        if(!check.available()){
+            File f = SPIFFS.open(path, FILE_WRITE);
+            if(!f){
+                Serial.printf("Failed to create file %s \n", path);
+            }
+            else{
+                Serial.printf("Created new measurements file: %s \n", path);
+                f.print("Datoteka z meritvami");
+                success = 1;
+                break;
+            }
+        }
+
+        Serial.printf("File %s allready exists..trying new one\n", path);
+        // path = /measure/filename_i.txt
+        path[0] = 0;
+        sprintf(appendix, "_%d.txt", i);
     }
+    if(!success){
+        Serial.printf("WARNING: overwriting old file: %s \n", filename);
+    }
+    return success;    
 }
 
 void FileSystem::deleteFile(const char *path)

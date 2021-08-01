@@ -6,11 +6,11 @@ var websocket;
 
 const action = {
 	UPDATE_MEASUREMENT: 0,
+    UPDATE_FILENAME:    1,
 	SERVER_MANAGEMENT:  2,
-	UPDATE_TIME:        3,
-	GET_FILES:          1,
-    NEW_FILE:           5,
-    DELETE_FILE:        4,
+	NEW_TIME:           3,
+    NEW_FILE:           4,
+    DELETE_FILE:        5,
 }
 
 
@@ -32,10 +32,11 @@ function onOpen(event) {
     if(document.URL.includes("index")){
         var today = new Date();
         var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-        sendMessage(action.UPDATE_TIME, time);
+        sendMessage(action.NEW_TIME, time);
     }
     else{
-        sendMessage(action.GET_FILES, "ALL");//TODO
+        // Action with value 1 updates list of stored measurement files
+        sendMessage(action.SERVER_MANAGEMENT, 1);
     }
 }
 
@@ -71,7 +72,7 @@ function receiveMessage(event) {
             }
             break;
 
-        case action.NEW_FILE:
+        case action.UPDATE_FILENAME:
             console.log("New measurement file" + data.v);
             addMeasurementFile(data.v);
             break;
@@ -146,8 +147,10 @@ function deleteMeasurementFile(filename){
 
 function downloadMeasurementsFile(filename){
     console.log("Prenesi " + filename);
-    window.location.href = "/" + filename;
+    window.location.href = "/download?file=" + filename;
 }
+
+// TODO: start new file
 
 
 /*--------------------------------------------------------------------------------------------

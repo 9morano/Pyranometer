@@ -16,7 +16,7 @@
 
 
 #define INDEX_FILE  "/index.html"
-#define GRAPH_FILE  "/graph.html"
+#define MEASUREMENTS_FILE  "/meritve.html"
 #define CSS_FILE    "/src/style.css"
 #define JS_FILE     "/src/script.js"
 #define CSS_BS_FILE "/src/bootstrap.min.css"
@@ -25,7 +25,7 @@
 
 
 // Definitions for possible message
-enum actions{UPDATE_MEASUREMENT, UPDATE_GRAPH, SERVER_MANAGEMENT, UPDATE_TIME};
+enum actions{UPDATE_MEASUREMENT, UPDATE_FILENAME, SERVER_MANAGEMENT, NEW_TIME, NEW_FILE, DELETE_FILE};
 
 // Global varables shared with main code and server code
 extern char global_time[9];
