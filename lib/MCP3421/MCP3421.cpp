@@ -3,9 +3,9 @@
 #include <Wire.h>
 
 
-#define MCP3421_ADDRESS	    (0x68) // to 0x6F
 #define SDA_PIN				(26) 			
 #define SCL_PIN				(27)
+uint8_t MCP3421_ADDRESS	 = 0x68;
 
 MCP3421::MCP3421()
 {
@@ -17,8 +17,19 @@ void MCP3421::setup(void)
     if(!Wire.begin(SDA_PIN, SCL_PIN)){
         Serial.println("I2C error on MCP3421");
     }
-    // Set up to default configuration
-    write(_config_register);
+
+    // Address may be 0x68 or 0x69 ... check it automaticaly
+    Wire.beginTransmission(MCP3421_ADDRESS);
+    uint8_t error = Wire.endTransmission();
+
+    if(error == 0){
+        // Set up to default configuration
+        write(_config_register);
+    }
+    else{
+        MCP3421_ADDRESS = 0x69;
+        write(_config_register);
+    }
 }
 
 void MCP3421::setConfig(uint8_t conf_reg)
@@ -122,7 +133,8 @@ uint8_t MCP3421::read(uint8_t _buff[])
         i++;
     }
     if(i != 3){
-        Serial.println("MCP3421 read error");
+        Serial.print("MCP3421 read error ");
+        Serial.println(i);
         return 0;
     }
     Wire.endTransmission(); 

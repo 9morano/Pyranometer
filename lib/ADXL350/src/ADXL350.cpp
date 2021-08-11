@@ -7,7 +7,7 @@ Configure device while in stand by mode, only then enter measurement mode with b
 #include "ADXL350.h"
 #include <Wire.h>
 
-#define ADXL350_DEVICE      (0x53)    // Device Address for ADXL350
+#define ADXL350_ADDRESS      (0x53)    // Device Address for ADXL350
 #define ADXL350_DATA_NUM    (6)       // Number of bytes to read (2 bytes per axis)
 #define SDA_PIN				(26) 			
 #define SCL_PIN				(27)		
@@ -23,7 +23,7 @@ ADXL350::ADXL350()
 void ADXL350::setup()
 {
 	if(!Wire.begin(SDA_PIN, SCL_PIN)){
-        Serial.println("I2C error...");
+        Serial.println("I2C error on ADXL350");
     }
 	delay(100);
 
@@ -210,7 +210,7 @@ void ADXL350::exitSleepMode(void)
 
 void ADXL350::write(byte _address, byte _val)
 {
-    Wire.beginTransmission(ADXL350_DEVICE); 
+    Wire.beginTransmission(ADXL350_ADDRESS); 
 	Wire.write(_address);             
 	Wire.write(_val);                 
 	Wire.endTransmission();  
@@ -218,21 +218,21 @@ void ADXL350::write(byte _address, byte _val)
 
 void ADXL350::read(byte _address, int _num, byte _buff[])
 {
-	Wire.beginTransmission(ADXL350_DEVICE);  
+	Wire.beginTransmission(ADXL350_ADDRESS);  
 	Wire.write(_address);             
 	Wire.endTransmission();         
 	
-	Wire.beginTransmission(ADXL350_DEVICE); 
-	Wire.requestFrom(ADXL350_DEVICE, _num);
+	Wire.beginTransmission(ADXL350_ADDRESS); 
+	Wire.requestFrom(ADXL350_ADDRESS, _num);
 	
-	int i = 0;
+	uint8_t i = 0;
 	while(Wire.available())					
 	{ 
 		_buff[i] = Wire.read();
 		i++;
 	}
 	if(i != _num){
-        Serial.println("Read error!");
+        Serial.println("ADXL350 read error!");
 	}
 	Wire.endTransmission();         	
 }
