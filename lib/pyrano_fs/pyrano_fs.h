@@ -12,13 +12,17 @@ class FileSystem {
         void printFiles(void);
         void printMeasurementsFiles(void);
 
-        uint8_t createFile(const char *path);
         void deleteFile(const char *path);
-        void append(const char *path, const char *msg);
+        uint8_t createFile(const char *path);
+        uint8_t changeCurrentFilename(const char *filename);
+
+        uint8_t append(const char *path, const char *msg);
+        uint8_t storeMeasurement(float power, float pitch, float roll, uint8_t temp);
         
     private:
 
         const char *_measurement_dir = "/measure/";
+        char _current_filename[20];
         
 
 };
@@ -33,15 +37,5 @@ class FileSystem {
  * try to create file with appendix to its filename...for example /measure/name_of_file_0.txt
  * If it doesn't succeed up to 5 times, function wil return false...new measurements will
  * overwrite the file with original filename (/measure/name_of_file.txt) - no safety here, no time for it :)
- * 
- * 
  */
-
-
-
-
-//uint8_t SERVER_check4html(void);
-
-
-
 

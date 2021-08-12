@@ -1,6 +1,47 @@
-/*
-Meritve so bonbonček..
-shranjuj sam moč in timestamp
+/* SHORT DESCRIPTION:
+------------------------------------------------------------------------------------------------------
+AT STARTUP:
+* init ACC - start inclination task. Maybe use it instead of interupts to detect activity :)
+* init ADC - not necessary, but preferable
+* init FS - only init, do not start doing msmnts
+* init SERVER - start wifi AP and server and wait for client
+* start updateServer task - to show the user msmnts
+
+WHEN USER CONNECTS:
+* obtain its time and start a task with high priority for updating global time
+* when user reconects, stop that task and start it again with new time
+
+WHEN USER SENDS START CMD: (new measurement)
+* obtain filename and start the measurement task
+
+WHEN USER SENDS STOP CMD: (download)
+* stop measurement task and send the CSV file to the user
+
+WHEN ACTIVITY DETECTED:
+* turn the server on, start the updateServer task
+
+AFTER 3MIN OF INACTIVITY:
+* turn the server off, stop the update task, continue with msmnt task if there is any allready running
+
+------------------------------------------------------------------------------------------------------
+
+FROM MAIN LOOP TO SERVERSIDE:
+* Warning that measurement is full
+* warning that measurements cant saved (could not create file?)
+
+* Update measurements periodically
+* send csv file
+
+FROM USER TO SERVERSIDE:
+* update time
+* CMD: start measurement with arg: filename and period
+* CMD: download the file
+* CMD: turn off the server
+
+------------------------------------------------------------------------------------------------------
+TODO:
+* add timestamp to the measurements file
+* some errors occurs at startup
 
 */
 #include <Arduino.h>
@@ -22,7 +63,7 @@ SemaphoreHandle_t time_mutex;
 
 
 // Global mesurement variables
-float pitch = 0, roll = 0;	// Angle - inclination
+float pitch_g = 0, roll_g = 0;	// Angle - inclination
 static SemaphoreHandle_t inclination_mutex;
 
 
@@ -37,49 +78,88 @@ FileSystem m_file;
 TaskHandle_t task_handle_measure = NULL;
 
 
-
 void toggleWiFi(uint8_t turnon);
 void error(uint8_t reboot = 0);
 
-void measureTask(void *param) {
+
+/* Inclination task must occur frequently to obtain true value of the angle ...
+ * 25 samples per second seems reasonable - therefore repeat this process 
+ * 20 times per second. Values are stored globlay - access it with inclination_mutex
+ */
+void inclinationTask(void *param) {
 
 	// Init accelerometer (defines in project-config.h)
 	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
-	delay(1);
 	adxl.setRange(1);
-	delay(1);
   	adxl.setDataRate(25);
-	delay(1);
+
+	// TODO: Confirm correct setup.
 	adxl.begin();
-	delay(1);
+
 
 	while(1){
 		// Get inclination
 		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
-		adxl.getInclinationLPF(&pitch, &roll);
-		//Serial.println(pitch);
+		adxl.getInclinationLPF(&pitch_g, &roll_g);
 		xSemaphoreGive(inclination_mutex);
+		//Serial.println(pitch);
 
-
-		// Delay for 100ms
+		// Delay for 50ms
 		vTaskDelay(50 / portTICK_PERIOD_MS);
 	}
 }
 
-// Update measurements
-void updateTask(void *param){
+/* Task intendend for obtaining the measurements of ADC and TEMP and 
+ * storing them into a file. Measurement period must be given as 
+ * param to the function when started. Give it in seconds!
+ * Use inclination mutex to prevent simultaneous access to resources
+ * from other tasks...inclination may suffer, but what can you do
+*/
+void measurementTask(uint16_t period){
 
-	float _p = 0, _r = 0;
+	float powa = 0, p = 0, r = 0;
+	uint8_t temp = 0;
+
+	while(1){
+		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
+		adc.startOneshot();
+		// Obtain the temperature 
+		p = pitch_g;
+		r = roll_g;
+		adc.getPowa(&powa);
+		xSemaphoreGive(inclination_mutex);
+
+		if(m_file.storeMeasurement(powa, p, r, temp) != 1){
+			// TODO: if we get error, memory is most likely full
+			// Stop with the measurement task and inform user if possible
+			Serial.println("WARNING: Failed to store msmnt!");
+			vTaskDelete(NULL);
+		}
+
+		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
+	}
+}
+
+
+
+/* Task to send updates to the server - every 200ms
+ * Use inclination mutex to prevent simultaneous access to resources
+ * from other tasks...inclination may suffer, but I'm not payed for this
+ */
+void serverUpdateTask(void *param){
+
+	float powa = 0, p = 0, r = 0;
 
 	while(1){
 
-		// Update inclination measurements - store them in local variable because of mutex
 		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
-		_p = pitch;
-		_r = roll;
+		adc.startOneshot();
+		p = pitch_g;
+		r = roll_g;
+		adc.getPowa(&powa);
 		xSemaphoreGive(inclination_mutex);
 
-		SERVER_sendUpdatedMeasurements(1000, _p, _r, 0);
+		SERVER_sendUpdatedMeasurements(1000, p, r, 0);
 
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
@@ -87,7 +167,7 @@ void updateTask(void *param){
 	}
 }
 
-void serverTask(void *param){
+void serverPowerTask(void *param){
 
 	uint8_t state = 1;
 
@@ -129,8 +209,11 @@ void setup() {
 
 	m_file.setup();
 
-	// TODO: 
-	//m_file.createFile("01_08_2021");
+	adc.setup();
+
+	// TODO:
+	// Changes stored filename and creates a file
+	//m_file.changeCurrentFilename("01_08_2022");
 	//m_file.printMeasurementsFiles();
 
 
@@ -139,7 +222,7 @@ void setup() {
 	server_mutex = xSemaphoreCreateMutex();
 
 	xTaskCreate(
-		serverTask,				// Function
+		serverPowerTask,				// Function
 		"Server task",			// Name (debugging purposes)
 		10000,					// Stack size in bytes
 		NULL,					// Parameters to pass
@@ -148,8 +231,8 @@ void setup() {
 	);
 
 	xTaskCreate(
-		measureTask,			// Function
-		"Measurement task",		// Name (debugging purposes)
+		inclinationTask,		// Function
+		"Inclination task",		// Name (debugging purposes)
 		2000,					// Stack size in bytes
 		NULL,					// Parameters to pass
 		10,						// Priority
@@ -157,7 +240,7 @@ void setup() {
 	);
 
 	xTaskCreate(
-		updateTask,				// Function
+		serverUpdateTask,				// Function
 		"Update task",			// Name (debugging purposes)
 		10000,					// Stack size in bytes
 		NULL,					// Parameters to pass
@@ -177,15 +260,9 @@ void loop() {
 }
 
 
-// If error occurs, print something periodically to UART, so
-// the UART LEDs will notify the user about it
 void error(uint8_t reboot){
-	// TODO: reboot after a while
-    while (1) {
-        if(millis() % 200 < 50){
-            Serial.println("Error occurred..blinking LEDs!");
-        }
-    }
+
+    configASSERT(0);
 }
 
 void toggleWiFi(uint8_t turnon) {

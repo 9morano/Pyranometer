@@ -67,11 +67,19 @@ void FileSystem::printMeasurementsFiles(void)
 }
 
 
+void FileSystem::deleteFile(const char *path)
+{
+    Serial.printf("Deleting file: %s\r\n", path);
+    if(!SPIFFS.remove(path)){
+        Serial.println("- delete failed");
+    }
+}
+
 
 uint8_t FileSystem::createFile(const char *filename)
 {
     char path[30];
-    char appendix[7] = ".txt";
+    char appendix[7] = ".csv";
     uint8_t success = 0;
 
     for(uint8_t i = 0; i<5; i++){
@@ -99,7 +107,7 @@ uint8_t FileSystem::createFile(const char *filename)
         Serial.printf("File %s allready exists..trying new one\n", path);
         // path = /measure/filename_i.txt
         path[0] = 0;
-        sprintf(appendix, "_%d.txt", i);
+        sprintf(appendix, "_%d.csv", i);
     }
     if(!success){
         Serial.printf("WARNING: overwriting old file: %s \n", filename);
@@ -107,29 +115,54 @@ uint8_t FileSystem::createFile(const char *filename)
     return success;    
 }
 
-void FileSystem::deleteFile(const char *path)
+uint8_t FileSystem::changeCurrentFilename(const char *filename)
 {
-    Serial.printf("Deleting file: %s\r\n", path);
-    if(!SPIFFS.remove(path)){
-        Serial.println("- delete failed");
+    uint8_t success = 0;
+    if (strlen(filename) < 20){
+        strcpy(_current_filename, filename);
+        success = createFile(filename); 
     }
+    return success;
 }
 
 
-void FileSystem::append(const char *path, const char *msg)
+
+
+uint8_t FileSystem::append(const char *path, const char *msg)
 {
     File file = SPIFFS.open(path, FILE_APPEND);
     if(!file){
         Serial.println("- failed to open file for appending");
-        return;
+        return 0;
     }
     if(!file.print(msg)){
         Serial.println("- append failed");
+        return 0;
     }
     file.close();
+    return 1;
 }
 
+uint8_t FileSystem::storeMeasurement(float power, float pitch, float roll, uint8_t temp)
+{
+    /* Possible measurements and their max values:
+     * --------------
+     * power: 999.9
+     * pitch: -90.0
+     * roll : -90.0
+     * temp : 70
+     * --------------
+     * together it takes 17 chars for measurements + 3 for comma delimiter (,) + /0
+     */
 
+    char str[21];
+
+    // Store the values into string
+    sprintf(str, "%3.1f,%3.1f,%3.1f,%d", power, pitch, roll, temp);
+
+    // Return 0 if there is an error
+    return append(_current_filename, str);
+}
 
 
 
