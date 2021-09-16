@@ -222,9 +222,8 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                 Serial.print("Received clients time:");
                 Serial.println(time);
 
-                xSemaphoreTake(time_mutex, portMAX_DELAY);
-                strcpy(global_time, time);
-                xSemaphoreGive(time_mutex);
+                //strcpy(global_time, time);
+
             }
             break;
 
@@ -278,32 +277,32 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     }
 
     // Serialize json document and send it via WS
-    char data[38];
+    char data[40];
     size_t len = serializeJson(json, data);
     ws.textAll(data, len);
 
     return 1;
 }
 
-uint8_t SERVER_sendUpdatedMeasurements(uint16_t power, float pitch, float roll, uint8_t temp){
+uint8_t SERVER_sendUpdatedMeasurements(float power, float pitch, float roll, uint8_t temp){
 
     /* Possible measurements and their max values:
      * --------------
-     * power: 0000
+     * power: 1000.0
      * pitch: -90.0
      * roll : -90.0
      * temp : 70
      * --------------
-     * together it takes 16 chars for measurements + 3 for delimiters (|)
+     * together it takes 18 chars for measurements + 3 for delimiters (|)
      * 
      * example: {"a":1,"v":"0000|-24.0|-24.0|66.0"}
      * there is 37 characters +1 for /0 delimiter - taking 40 just in case
      */
 
-    char str[20];
+    char str[22];   // 21 char + /0
 
     // Store the values into one string
-    sprintf(str, "%d|%3.1f|%3.1f|%d", power, pitch, roll, temp);
+    sprintf(str, "%4.1f|%3.1f|%3.1f|%d", power, pitch, roll, temp);
 
     SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, str);
     return 1;

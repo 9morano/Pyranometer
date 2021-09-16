@@ -32,30 +32,10 @@
                 <a class="nav-link btn btn-secondary" href="meritve.html" style="width: 100px; margin-left: 1px;">Meritve</a>
             </li>
             <li class="nav-item">
-                <button class="nav-link btn btn-secondary" style="width: 100px; margin-left: 1px;" data-toggle="modal" data-target="#helpModal">Pomoč</button>
+                <button class="nav-link btn btn-secondary" style="width: 100px; margin-left: 1px;" id="btn_off">Izklopi WiFi</button>
             </li>
         </ul>
     </nav>
-
-    <!-- MODAL - HELP -->
-    <div class="modal fade" id="helpModal">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title">Navodila za uporabo</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-
-                <!-- Modal body -->
-                <div class="modal-body">
-                    <p>Navodila za uporabo...</p>
-                </div>
-
-            </div>
-        </div>
-    </div>
 
     <!-- CONTENT -->
     <div class="container">
@@ -65,25 +45,18 @@
                 <br>
 
                 <h2>MOČ</h2>
-                <p style="font-size: x-large;"><span id="power"></span> W</p>
+                <p style="font-size: xx-large;"><span id="power"></span> W</p>
 
                 <h2>NAKLON</h2>
-                <p style="font-size: x-large;"><span id="pitch"></span> &#176; | <span id="roll"></span> &#176;</p>
+                <p style="font-size: xx-large;"><span id="pitch"></span> &#176; | <span id="roll"></span> &#176;</p>
                 
-                <h2>ČAS</h2>
-                <p style="font-size: x-large;"><span id="time"></span></p>
+                <h2>URA</h2>
+                <p style="font-size: xx-large;"><span id="time"></span></p>
 
                 <h2>TEMPERATURA</h2>
-                <p style="font-size: x-large;"><span id="temp">Priklopi senzor...</span></p>
+                <p style="font-size: xx-large;"><span id="temp">Priklopi senzor...</span></p>
                 
             </div>
-        </div>
-    </div>
-
-    <!-- FOOTNOTE -->
-    <nav class="navbar navbar-expand-lg justify-content-center bg-dark fixed-bottom">
-        <div class="row justify-content-center">
-            <button class="nav-link btn btn-secondary" id="btn_off">Izklop strežnika</button>
         </div>
     </div>
 </body>

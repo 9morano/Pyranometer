@@ -7,15 +7,14 @@ AT STARTUP:
 * init SERVER - start wifi AP and server and wait for client
 * start updateServer task - to show the user msmnts
 
-WHEN USER CONNECTS:
-* obtain its time and start a task with high priority for updating global time
-* when user reconects, stop that task and start it again with new time
-
 WHEN USER SENDS START CMD: (new measurement)
-* obtain filename and start the measurement task
+* obtain filename, period and clients time, then start the measurement task. Use the period to call the 
+function repeatedly and update the timestamp accordingly
+* TODO: check if the msmnt is allready running - stop it in that case
+* TODO: confirm to the user
 
-WHEN USER SENDS STOP CMD: (download)
-* stop measurement task and send the CSV file to the user
+WHEN USER SENDS DOWNLOAD CMD:
+* send the CSV file to the user and optionally the stop measurement task
 
 WHEN ACTIVITY DETECTED:
 * turn the server on, start the updateServer task
@@ -33,15 +32,16 @@ FROM MAIN LOOP TO SERVERSIDE:
 * send csv file
 
 FROM USER TO SERVERSIDE:
-* update time
-* CMD: start measurement with arg: filename and period
+* CMD: start measurement with arg: filename, period and clients time
 * CMD: download the file
+* CMD: delete file
 * CMD: turn off the server
 
 ------------------------------------------------------------------------------------------------------
 TODO:
 * add timestamp to the measurements file
 * some errors occurs at startup
+* add calibration at each startup
 
 */
 #include <Arduino.h>
@@ -93,6 +93,7 @@ void inclinationTask(void *param) {
 	adxl.setRange(1);
   	adxl.setDataRate(25);
 
+	//adxl.printAllRegister();
 	// TODO: Confirm correct setup.
 	adxl.begin();
 
@@ -101,45 +102,13 @@ void inclinationTask(void *param) {
 		// Get inclination
 		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
 		adxl.getInclinationLPF(&pitch_g, &roll_g);
+		//Serial.println(pitch_g);
 		xSemaphoreGive(inclination_mutex);
-		//Serial.println(pitch);
 
 		// Delay for 50ms
 		vTaskDelay(50 / portTICK_PERIOD_MS);
 	}
 }
-
-/* Task intendend for obtaining the measurements of ADC and TEMP and 
- * storing them into a file. Measurement period must be given as 
- * param to the function when started. Give it in seconds!
- * Use inclination mutex to prevent simultaneous access to resources
- * from other tasks...inclination may suffer, but what can you do
-*/
-void measurementTask(uint16_t period){
-
-	float powa = 0, p = 0, r = 0;
-	uint8_t temp = 0;
-
-	while(1){
-		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
-		adc.startOneshot();
-		// Obtain the temperature 
-		p = pitch_g;
-		r = roll_g;
-		adc.getPowa(&powa);
-		xSemaphoreGive(inclination_mutex);
-
-		if(m_file.storeMeasurement(powa, p, r, temp) != 1){
-			// TODO: if we get error, memory is most likely full
-			// Stop with the measurement task and inform user if possible
-			Serial.println("WARNING: Failed to store msmnt!");
-			vTaskDelete(NULL);
-		}
-
-		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
-	}
-}
-
 
 
 /* Task to send updates to the server - every 200ms
@@ -159,11 +128,72 @@ void serverUpdateTask(void *param){
 		adc.getPowa(&powa);
 		xSemaphoreGive(inclination_mutex);
 
-		SERVER_sendUpdatedMeasurements(1000, p, r, 0);
+		//Serial.println(p);
+
+		SERVER_sendUpdatedMeasurements(powa, p, r, 0);
 
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
 		vTaskDelay(200 / portTICK_PERIOD_MS);
+	}
+}
+
+
+
+/* Task intendend for obtaining the measurements of ADC and TEMP and 
+ * storing them into a file. Measurement period must be given as 
+ * param to the function when started. Give it in seconds!
+ * Use inclination mutex to prevent simultaneous access to resources
+ * from other tasks...inclination may suffer, but what can you do
+*/
+void measurementTask(uint16_t period){
+
+	float powa = 0, pitch = 0, roll = 0;
+	uint8_t temp = 0;
+
+	uint8_t h = 0, m = 0, s = 0;
+	
+	// Convert time from char array to ints
+	char *tmp;
+	tmp = strtok(global_time, ":");
+	if(tmp){
+		h = atoi(tmp);
+	}
+	tmp = strtok(NULL, ":");
+	if(tmp){
+		m = atoi(tmp);
+	}
+	tmp = strtok(NULL, ":");
+	if(tmp){
+		s = atoi(tmp);
+	}
+
+
+	while(1){
+		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
+		adc.startOneshot();
+		// Obtain the temperature 
+		pitch = pitch_g;
+		roll = roll_g;
+		adc.getPowa(&powa);
+		xSemaphoreGive(inclination_mutex);
+
+		if(m_file.storeMeasurement(powa, pitch, roll, temp) != 1){
+			// TODO: if we get error, memory is most likely full
+			// Stop with the measurement task and inform user if possible
+			Serial.println("WARNING: Failed to store msmnt!");
+			vTaskDelete(NULL);
+		}
+
+		// Update time variables - kaj če je pa 5 min = 300s ???
+		/*s += period;
+		if(s > 60){
+			s -= 60;
+			m++;
+			if()
+		}*/
+
+		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
 	}
 }
 
