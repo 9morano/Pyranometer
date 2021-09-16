@@ -197,6 +197,8 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                     // Get measurement filenames and send them to the client
                     File measurements = SPIFFS.open("/measure");
 
+                    Serial.print("Update");
+
                     while(true){
                         File file = measurements.openNextFile();
                         
@@ -227,7 +229,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                 Serial.print("Received clients time:");
                 Serial.println(t);
 
-                strcpy(tmp_char, t);
+                strncpy(tmp_char, t, 9);
 
                 // Convert time from char array to ints
                 tmp = strtok(tmp_char, ":");
@@ -256,18 +258,44 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
             break;
 
             case NEW_FILE:
-                // Inform main context about new filename
+            {
+                char tmp_char[17] = "";
+                char *tmp;
+                Measurement_t measurement;
                 
-                // Confirm to the client
-                //SERVER_sendWebSocketMessage(UPDATE_FILENAME, str+9);
+                Serial.println("New measurement!");
+                const char *t = json["v"];
+                strncpy(tmp_char, t, 17);
 
+                tmp = strtok(tmp_char, "|");
+                if(tmp){
+                    strncpy(measurement.filename, tmp, 12);
+                }
+                tmp = strtok(NULL, "|");
+                if(tmp){
+                    measurement.period = atoi(tmp);
+                }       
+
+                // Delete old task and start new one
+                vTaskDelete(task_handle_measure);
+
+                // Confirm to the client
+                SERVER_sendWebSocketMessage(NEW_MEASUREMENT, measurement.filename);
+                // Add it to the list of measurements
+                SERVER_sendWebSocketMessage(UPDATE_FILENAME, measurement.filename);
+
+                // Start new task
+                xTaskCreatePinnedToCore(
+                    measurementTask, "Measurement task", 10000, (void *) &measurement, 9, &task_handle_measure, 1
+                );
+            }
             break;
 
             case DELETE_FILE:
             {
                 const char *path = json["v"];
                 char p[30] = "/measure/";
-                strcat(p, path);
+                strncat(p, path, 29);
                 Serial.printf("User deleted file %s \n", p);
                 SPIFFS.remove(p);
             }
@@ -296,6 +324,7 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     switch (action){
         case UPDATE_MEASUREMENT:
         case UPDATE_FILENAME:
+        case NEW_MEASUREMENT:
             json["a"] = action;
             json["v"] = value;
             break;

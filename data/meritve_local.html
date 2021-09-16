@@ -54,7 +54,10 @@
                 <br>
                 <h2>TRENUTNA MERITEV</h2>
                 <p><b>Meritev: </b><span id="msmnt_0">31_07_2021_0.txt</span></p>
-                <p>Zaključi trenutno in izvedi novo: <input type="text" id="msmnt_name" value="">.txt <button class="btn btn-secondary float-right" id="download_0">Izvedi</button></p> 
+                <p>Perioda merjenja: <span id="perioda_sek">10</span> sekund...
+                    <input type="range" class="form-range; pull-right" min="10" max="600" step="10" id="period_range">
+                </p>   
+                <p>Zaključi trenutno in izvedi novo: <input type="text" id="msmnt_name" value="">.txt <button class="btn btn-secondary float-right" id="izvedi">Izvedi</button></p> 
                 <br>
 
                 <h2 id="stored_measurements">SHRANJENE MERITVE</h2>                     

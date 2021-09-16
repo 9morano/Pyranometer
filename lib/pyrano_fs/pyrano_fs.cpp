@@ -75,7 +75,36 @@ void FileSystem::deleteFile(const char *path)
     }
 }
 
+uint8_t FileSystem::createFile(const char *filename)
+{
+    char path[30] = "";
+    char appendix[5] = ".csv";
+    uint8_t success = 0;
 
+     // path = /measure/filename.txt
+    strncat(path, _measurement_dir, 10);
+    strncat(path, filename, 12);
+    strncat(path, appendix, 5);
+
+
+    File f = SPIFFS.open(path, FILE_WRITE);
+    if(!f){
+        Serial.printf("Failed to create file %s \n", path);
+    }
+    else{
+        Serial.printf("Created new measurements file: %s \n", path);
+        f.print("Datoteka z meritvami");
+        success = 1;
+
+    }
+
+    strncpy(_current_filename, path, 30);
+    return success;    
+}
+
+/*
+ * Gracefull attempt to store measurements in case the filename is the same...
+ * Nevermind - stored here if someone will try to do the same :) 
 uint8_t FileSystem::createFile(const char *filename)
 {
     char path[30];
@@ -112,14 +141,15 @@ uint8_t FileSystem::createFile(const char *filename)
     if(!success){
         Serial.printf("WARNING: overwriting old file: %s \n", filename);
     }
+    changeCurrentFilename(filename);
     return success;    
-}
+}*/
 
 uint8_t FileSystem::changeCurrentFilename(const char *filename)
 {
     uint8_t success = 0;
     if (strlen(filename) < 20){
-        strcpy(_current_filename, filename);
+        strncpy(_current_filename, filename, 30);
         success = createFile(filename); 
     }
     return success;
@@ -143,7 +173,7 @@ uint8_t FileSystem::append(const char *path, const char *msg)
     return 1;
 }
 
-uint8_t FileSystem::storeMeasurement(float power, float pitch, float roll, uint8_t temp)
+uint8_t FileSystem::storeMeasurement(float *power, float *pitch, float *roll, uint8_t *temp)
 {
     /* Possible measurements and their max values:
      * --------------
@@ -158,12 +188,35 @@ uint8_t FileSystem::storeMeasurement(float power, float pitch, float roll, uint8
     char str[21];
 
     // Store the values into string
-    sprintf(str, "%3.1f,%3.1f,%3.1f,%d", power, pitch, roll, temp);
+    sprintf(str, "%3.1f,%3.1f,%3.1f,%d", *power, *pitch, *roll, *temp);
 
     // Return 0 if there is an error
     return append(_current_filename, str);
 }
 
+uint8_t FileSystem::storeMeasurementWTimstamp(float *power, float *pitch, float *roll, uint8_t *temp, uint8_t *h, uint8_t *m, uint8_t *s)
+{
+    /* Possible measurements and their max values:
+     * --------------
+     * power: 999.9
+     * pitch: -90.0
+     * roll : -90.0
+     * temp : 70
+     * --------------
+     * together it takes 17 chars for measurements + 3 for comma delimiter (,) + /0
+     * plus
+     * 6 chars for time and 2 for '[]'
+     * 
+     */
+
+    char str[30];
+
+    // Store the values into string
+    sprintf(str, "[%d%d%d]%3.1f,%3.1f,%3.1f,%d", *h, *m, *s, *power, *pitch, *roll, *temp);
+
+    // Return 0 if there is an error
+    return append(_current_filename, str);
+}
 
 
 

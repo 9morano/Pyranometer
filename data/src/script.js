@@ -11,6 +11,7 @@ const action = {
 	NEW_TIME:           3,
     NEW_FILE:           4,
     DELETE_FILE:        5,
+    NEW_MEASUREMENT:    6,
 }
 
 const value = {
@@ -42,7 +43,7 @@ function onOpen(event) {
     }
     else{
         // Action with value 1 updates list of stored measurement files
-        sendMessage(action.SERVER_MANAGEMENT, val.UPDATE);
+        sendMessage(action.SERVER_MANAGEMENT, value.UPDATE);
     }
 }
 
@@ -81,6 +82,10 @@ function receiveMessage(event) {
         case action.UPDATE_FILENAME:
             console.log("New measurement file" + data.v);
             addMeasurementFile(data.v);
+            break;
+
+        case action.NEW_MEASUREMENT:
+            $("#msmnt_0").text(data.v);
             break;
 
         default:
@@ -156,8 +161,20 @@ function downloadMeasurementsFile(filename){
     window.location.href = "/download?file=" + filename;
 }
 
-// TODO: start new file
+function startNewMeasurement(){
+    let filename = $("#msmnt_name").val();
 
+    if(filename.length > 12){
+        window.alert("Dolžina imena je lahko max 12 znakov :(");
+        return;
+    }
+
+    let period = $("#perioda_sek").text();
+
+    var data =  filename + "|" + period;
+    console.log(data);
+    sendMessage(action.NEW_FILE, data);
+}
 
 /*--------------------------------------------------------------------------------------------
  * MAIN
@@ -176,6 +193,12 @@ $(document).ready(function(){
     }
     else{
         console.log("MSMNTS");
+        $("#izvedi").click(startNewMeasurement);
+
+        // Update slider seconds val
+        document.getElementById("period_range").oninput = function() {
+            $("#perioda_sek").text(this.value);
+        }
     }
 
     //addMeasurementFile("01_08_2021_0.txt");

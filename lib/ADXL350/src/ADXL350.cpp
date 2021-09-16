@@ -46,7 +46,7 @@ void ADXL350::setup(int16_t off_x, int16_t off_y, int16_t off_z)
 	write(ADXL350_OFSY, off_y);
 	write(ADXL350_OFSZ, off_z);
 
-	printAllRegister();
+	//printAllRegister();
 }
 
 // Enter measurement mode

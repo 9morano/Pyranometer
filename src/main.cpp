@@ -124,6 +124,7 @@ void serverUpdateTask(void *param){
 
 		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		adc.startOneshot();
+		// Obtain the temperature 
 		p = pitch_g;
 		r = roll_g;
 		adc.getPowa(&powa);
@@ -136,39 +137,6 @@ void serverUpdateTask(void *param){
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
 		vTaskDelay(200 / portTICK_PERIOD_MS);
-	}
-}
-
-
-
-/* Task intendend for obtaining the measurements of ADC and TEMP and 
- * storing them into a file. Measurement period must be given as 
- * param to the function when started. Give it in seconds!
- * Use inclination mutex to prevent simultaneous access to resources
- * from other tasks...inclination may suffer, but what can you do
-*/
-void measurementTask(uint16_t period){
-
-	float powa = 0, pitch = 0, roll = 0;
-	uint8_t temp = 0;
-
-	while(1){
-		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
-		adc.startOneshot();
-		// Obtain the temperature 
-		pitch = pitch_g;
-		roll = roll_g;
-		adc.getPowa(&powa);
-		xSemaphoreGive(mutex_inclination);
-
-		if(m_file.storeMeasurement(powa, pitch, roll, temp) != 1){
-			// TODO: if we get error, memory is most likely full
-			// Stop with the measurement task and inform user if possible
-			Serial.println("WARNING: Failed to store msmnt!");
-			vTaskDelete(NULL);
-		}
-
-		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -219,11 +187,9 @@ void timeCounterTask(void *param){
 	uint32_t time = 0;
 
 	while(1){
-
 		xSemaphoreTake(mutex_time, portMAX_DELAY);
 
 		// If time was updated - bit 24 set to 1
-		// 1 00010000 00011111 00000011
 		if((global_time >> 24) == 1){
 			s = (uint8_t)(global_time & 0xff);
 			m = (uint8_t)((global_time >> 8 ) & 0xff);
@@ -242,7 +208,6 @@ void timeCounterTask(void *param){
 				}
 			}
 		}
-
 		time = 0;
 		time |= (s);
 		time |= (m) << 8;
@@ -251,9 +216,62 @@ void timeCounterTask(void *param){
 		global_time = time;
 		xSemaphoreGive(mutex_time);
 		//Serial.printf("Time = %d:%d:%d \n", h, m, s);
-
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
+}
+
+/* Task intendend for obtaining the measurements of ADC and TEMP and 
+ * storing them into a file. Measurement period must be given as 
+ * param to the function when started. Give it in seconds!
+ * Use inclination mutex to prevent simultaneous access to resources
+ * from other tasks...inclination may suffer, but what can you do
+*/
+void measurementTask(void *param){
+
+	float powa = 0, pitch = 0, roll = 0;
+	uint8_t temp = 0;
+	uint32_t time = 0;
+	uint8_t s = 0, m = 0, h = 0;
+
+	char filename[10];
+	uint16_t period = 0;
+	Measurement_t *msmnt = (Measurement_t *)param;
+	strncpy(filename, msmnt->filename, 12);
+	period = msmnt->period;
+
+	m_file.createFile(filename);
+
+	//while(1){
+
+		while(1){
+
+			// Measure stuff
+			xSemaphoreTake(mutex_inclination, portMAX_DELAY);
+			adc.startOneshot();
+			// Obtain the temperature 
+			pitch = pitch_g;
+			roll = roll_g;
+			adc.getPowa(&powa);
+			xSemaphoreGive(mutex_inclination);
+
+			// Get timestamp
+			xSemaphoreTake(mutex_time, portMAX_DELAY);
+			time = global_time;
+			xSemaphoreGive(mutex_time);
+
+			s = (uint8_t)(time & 0xff);
+			m = (uint8_t)((time >> 8 ) & 0xff);
+			h = (uint8_t)((time >> 16) & 0xff);
+
+			if(m_file.storeMeasurementWTimstamp(&powa, &pitch, &roll, &temp, &h, &m, &s) != 1){
+				// TODO: if we get error, memory is most likely full
+				// Stop with the measurement task and inform user if possible
+				Serial.println("WARNING: Failed to store msmnt!");
+				vTaskDelete(NULL);
+			}
+
+			vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
+		}
 }
 
 void setup() {
@@ -261,14 +279,9 @@ void setup() {
 	delay(2000);
 
 	m_file.setup();
+	m_file.printInfo();
 
 	adc.setup();
-
-	// TODO:
-	// Changes stored filename and creates a file
-	//m_file.changeCurrentFilename("01_08_2022");
-	//m_file.printMeasurementsFiles();
-
 
 	mutex_inclination = xSemaphoreCreateMutex();
 	mutex_time = xSemaphoreCreateMutex();
@@ -283,13 +296,14 @@ void setup() {
 		NULL					// Handler
 	);
 
-	xTaskCreate(
+	xTaskCreatePinnedToCore(
 		inclinationTask,		// Function
 		"Inclination task",		// Name (debugging purposes)
 		2000,					// Stack size in bytes
 		NULL,					// Parameters to pass
 		10,						// Priority
-		&task_handle_measure	// Handler
+		NULL,	// Handler
+		1
 	);
 
 	xTaskCreate(
@@ -297,18 +311,35 @@ void setup() {
 		"Update task",			// Name (debugging purposes)
 		10000,					// Stack size in bytes
 		NULL,					// Parameters to pass
-		11,						// Priority
+		8,						// Priority
 		NULL					// Handler
 	);
 
-	xTaskCreate(
+	xTaskCreatePinnedToCore(
 		timeCounterTask,
 		"Time counter",
-		10000,
+		1000,
 		NULL,
 		20,
-		NULL
+		NULL,
+		1
 	);
+
+	// Start default measurement file with period of 10 minutes
+	Measurement_t measurement;
+	strncpy(measurement.filename, "31_07_2021", 12);
+	measurement.period = 10;
+
+	xTaskCreatePinnedToCore(
+		measurementTask,		// Function
+		"Measurement task",			// Name (debugging purposes)
+		16000,					// Stack size in bytes
+		(void *) &measurement,					// Parameters to pass
+		9,						// Priority
+		&task_handle_measure,					// Handler
+		1
+	);
+
 }
 
 

@@ -25,7 +25,7 @@
 
 
 // Definitions for possible message
-enum actions{UPDATE_MEASUREMENT, UPDATE_FILENAME, SERVER_MANAGEMENT, NEW_TIME, NEW_FILE, DELETE_FILE};
+enum actions{UPDATE_MEASUREMENT, UPDATE_FILENAME, SERVER_MANAGEMENT, NEW_TIME, NEW_FILE, DELETE_FILE, NEW_MEASUREMENT};
 enum values{TURN_OFF, UPDATE};
 
 // Global varables shared with main code and server code
@@ -34,6 +34,16 @@ extern SemaphoreHandle_t mutex_time;
 
 extern uint8_t server_state;
 extern SemaphoreHandle_t mutex_server;
+
+// Exteren variables for measurement task
+extern TaskHandle_t task_handle_measure;
+extern void measurementTask(void *param);
+
+typedef struct m{
+    char filename[13];
+    uint16_t period;
+    uint8_t restart;
+} Measurement_t;
 
 
 

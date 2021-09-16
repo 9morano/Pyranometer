@@ -17,12 +17,13 @@ class FileSystem {
         uint8_t changeCurrentFilename(const char *filename);
 
         uint8_t append(const char *path, const char *msg);
-        uint8_t storeMeasurement(float power, float pitch, float roll, uint8_t temp);
+        uint8_t storeMeasurement(float *power, float *pitch, float *roll, uint8_t *temp);
+        uint8_t storeMeasurementWTimstamp(float *power, float *pitch, float *roll, uint8_t *temp, uint8_t *h, uint8_t *m, uint8_t *s);
         
     private:
 
         const char *_measurement_dir = "/measure/";
-        char _current_filename[20];
+        char _current_filename[31] = "";
         
 
 };
