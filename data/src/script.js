@@ -13,6 +13,12 @@ const action = {
     DELETE_FILE:        5,
 }
 
+const value = {
+    TURN_OFF:           0,  // Turn the server off
+    UPDATE:             1,  // Update the list of measurement files
+
+}
+
 
 /*--------------------------------------------------------------------------------------------
  * WEB SOCKETS 
@@ -36,7 +42,7 @@ function onOpen(event) {
     }
     else{
         // Action with value 1 updates list of stored measurement files
-        sendMessage(action.SERVER_MANAGEMENT, 1);
+        sendMessage(action.SERVER_MANAGEMENT, val.UPDATE);
     }
 }
 
@@ -94,7 +100,7 @@ function sendMessage(action, value) {
  *--------------------------------------------------------------------------------------------*/
 function turnServerOff(){
     console.log("Turn the server off!");
-    sendMessage(action.SERVER_MANAGEMENT, 0);
+    sendMessage(action.SERVER_MANAGEMENT, val.TURN_OFF);
 
     // TODO close the browser - doesn't work with Firefox 86 
     var conf = confirm("Če se okno ne zapre, ga zaprite ročno!");

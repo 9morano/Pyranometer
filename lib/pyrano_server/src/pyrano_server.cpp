@@ -189,9 +189,9 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
 
                 if(value == 0){
                     Serial.println("Turn off the server.");
-                    xSemaphoreTake(server_mutex, portMAX_DELAY);
+                    xSemaphoreTake(mutex_server, portMAX_DELAY);
                     server_state = 0;
-                    xSemaphoreGive(server_mutex);
+                    xSemaphoreGive(mutex_server);
                 }
                 else if(value == 1){
                     // Get measurement filenames and send them to the client
@@ -216,20 +216,50 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
             break;
 
             case NEW_TIME:
-            {
-                const char *time = json["v"];
+            {   
+                uint8_t h = 0, m = 0, s = 0;
+                char *tmp;
+                char tmp_char[10];
+                uint32_t new_time = 0;
 
+                // TODO: delete this - debug
+                const char *t = json["v"];
                 Serial.print("Received clients time:");
-                Serial.println(time);
+                Serial.println(t);
 
-                //strcpy(global_time, time);
+                strcpy(tmp_char, t);
 
+                // Convert time from char array to ints
+                tmp = strtok(tmp_char, ":");
+                if(tmp){
+                    h = atoi(tmp);
+                }
+                tmp = strtok(NULL, ":");
+                if(tmp){
+                    m = atoi(tmp);
+                }
+                tmp = strtok(NULL, ":");
+                if(tmp){
+                    s = atoi(tmp);
+                }
+
+                // Update global time variable
+                new_time |= (s);
+                new_time |= (m) << 8;
+                new_time |= (h) << 16;
+                new_time |= (0x01) << 24;   // Update indicator 
+
+                xSemaphoreTake(mutex_time, portMAX_DELAY);
+                global_time = new_time;
+                xSemaphoreGive(mutex_time);          
             }
             break;
 
             case NEW_FILE:
                 // Inform main context about new filename
+                
                 // Confirm to the client
+                //SERVER_sendWebSocketMessage(UPDATE_FILENAME, str+9);
 
             break;
 
@@ -284,6 +314,9 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     return 1;
 }
 
+
+
+
 uint8_t SERVER_sendUpdatedMeasurements(float power, float pitch, float roll, uint8_t temp){
 
     /* Possible measurements and their max values:
@@ -307,3 +340,5 @@ uint8_t SERVER_sendUpdatedMeasurements(float power, float pitch, float roll, uin
     SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, str);
     return 1;
 }
+
+

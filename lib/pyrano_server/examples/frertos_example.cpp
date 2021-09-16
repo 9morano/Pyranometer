@@ -21,6 +21,10 @@ TaskHandle_t task_count_handle = NULL;
 void toggleLED(void * parameter) {
 
 	pinMode(LED_BUILTIN, OUTPUT);
+
+	// Get parameter
+	char *client_time;
+	client_time = (char *) parameter;
   
 	while(1){
 

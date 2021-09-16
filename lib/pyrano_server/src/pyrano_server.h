@@ -26,13 +26,14 @@
 
 // Definitions for possible message
 enum actions{UPDATE_MEASUREMENT, UPDATE_FILENAME, SERVER_MANAGEMENT, NEW_TIME, NEW_FILE, DELETE_FILE};
+enum values{TURN_OFF, UPDATE};
 
 // Global varables shared with main code and server code
-extern char global_time[9];
-extern SemaphoreHandle_t time_mutex;
+extern uint32_t global_time;
+extern SemaphoreHandle_t mutex_time;
 
 extern uint8_t server_state;
-extern SemaphoreHandle_t server_mutex;
+extern SemaphoreHandle_t mutex_server;
 
 
 

@@ -54,17 +54,17 @@ TODO:
 
 // Global variable to store the state of the server
 uint8_t server_state = 1;
-SemaphoreHandle_t server_mutex;
+SemaphoreHandle_t mutex_server;
 
 
-// Global time variable (8 char + /0)
-char global_time[9];
-SemaphoreHandle_t time_mutex;
+// Global time variable 0x00hhmmss
+uint32_t global_time = 0;
+SemaphoreHandle_t mutex_time;
 
 
 // Global mesurement variables
 float pitch_g = 0, roll_g = 0;	// Angle - inclination
-static SemaphoreHandle_t inclination_mutex;
+static SemaphoreHandle_t mutex_inclination;
 
 
 // Create objects
@@ -76,6 +76,7 @@ FileSystem m_file;
 
 // Task handles for task controll
 TaskHandle_t task_handle_measure = NULL;
+TaskHandle_t task_handle_time = NULL;
 
 
 void toggleWiFi(uint8_t turnon);
@@ -84,7 +85,7 @@ void error(uint8_t reboot = 0);
 
 /* Inclination task must occur frequently to obtain true value of the angle ...
  * 25 samples per second seems reasonable - therefore repeat this process 
- * 20 times per second. Values are stored globlay - access it with inclination_mutex
+ * 20 times per second. Values are stored globlay - access it with mutex_inclination
  */
 void inclinationTask(void *param) {
 
@@ -100,10 +101,10 @@ void inclinationTask(void *param) {
 
 	while(1){
 		// Get inclination
-		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
+		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		adxl.getInclinationLPF(&pitch_g, &roll_g);
 		//Serial.println(pitch_g);
-		xSemaphoreGive(inclination_mutex);
+		xSemaphoreGive(mutex_inclination);
 
 		// Delay for 50ms
 		vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -121,12 +122,12 @@ void serverUpdateTask(void *param){
 
 	while(1){
 
-		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
+		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		adc.startOneshot();
 		p = pitch_g;
 		r = roll_g;
 		adc.getPowa(&powa);
-		xSemaphoreGive(inclination_mutex);
+		xSemaphoreGive(mutex_inclination);
 
 		//Serial.println(p);
 
@@ -151,32 +152,14 @@ void measurementTask(uint16_t period){
 	float powa = 0, pitch = 0, roll = 0;
 	uint8_t temp = 0;
 
-	uint8_t h = 0, m = 0, s = 0;
-	
-	// Convert time from char array to ints
-	char *tmp;
-	tmp = strtok(global_time, ":");
-	if(tmp){
-		h = atoi(tmp);
-	}
-	tmp = strtok(NULL, ":");
-	if(tmp){
-		m = atoi(tmp);
-	}
-	tmp = strtok(NULL, ":");
-	if(tmp){
-		s = atoi(tmp);
-	}
-
-
 	while(1){
-		xSemaphoreTake(inclination_mutex, portMAX_DELAY);
+		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		adc.startOneshot();
 		// Obtain the temperature 
 		pitch = pitch_g;
 		roll = roll_g;
 		adc.getPowa(&powa);
-		xSemaphoreGive(inclination_mutex);
+		xSemaphoreGive(mutex_inclination);
 
 		if(m_file.storeMeasurement(powa, pitch, roll, temp) != 1){
 			// TODO: if we get error, memory is most likely full
@@ -184,14 +167,6 @@ void measurementTask(uint16_t period){
 			Serial.println("WARNING: Failed to store msmnt!");
 			vTaskDelete(NULL);
 		}
-
-		// Update time variables - kaj če je pa 5 min = 300s ???
-		/*s += period;
-		if(s > 60){
-			s -= 60;
-			m++;
-			if()
-		}*/
 
 		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
 	}
@@ -223,13 +198,61 @@ void serverPowerTask(void *param){
 
 	while(1){
 
-		xSemaphoreTake(server_mutex, portMAX_DELAY);
+		xSemaphoreTake(mutex_server, portMAX_DELAY);
 		state = server_state;
-		xSemaphoreGive(server_mutex);
+		xSemaphoreGive(mutex_server);
 
 		toggleWiFi(state);
 
 		vTaskDelay(100 / portTICK_PERIOD_MS);
+	}
+}
+
+/* Task to update global time counter
+ * When client connects to the server, the tim is updated - indicated
+ * with bit 24 setted to 1.
+ * This kind of time counter is quite unaccurate..oh well
+*/ 
+void timeCounterTask(void *param){
+
+	uint8_t h = 0, m = 0, s = 0;
+	uint32_t time = 0;
+
+	while(1){
+
+		xSemaphoreTake(mutex_time, portMAX_DELAY);
+
+		// If time was updated - bit 24 set to 1
+		// 1 00010000 00011111 00000011
+		if((global_time >> 24) == 1){
+			s = (uint8_t)(global_time & 0xff);
+			m = (uint8_t)((global_time >> 8 ) & 0xff);
+			h = (uint8_t)((global_time >> 16) & 0xff);
+		}
+
+		s++;
+		if(s == 60){
+			s = 0;
+			m++;
+			if(m == 60){
+				m = 0;
+				h++;
+				if(h == 24){
+					h = 0;
+				}
+			}
+		}
+
+		time = 0;
+		time |= (s);
+		time |= (m) << 8;
+		time |= (h) << 16;
+
+		global_time = time;
+		xSemaphoreGive(mutex_time);
+		//Serial.printf("Time = %d:%d:%d \n", h, m, s);
+
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -247,12 +270,12 @@ void setup() {
 	//m_file.printMeasurementsFiles();
 
 
-	inclination_mutex = xSemaphoreCreateMutex();
-	time_mutex = xSemaphoreCreateMutex();
-	server_mutex = xSemaphoreCreateMutex();
+	mutex_inclination = xSemaphoreCreateMutex();
+	mutex_time = xSemaphoreCreateMutex();
+	mutex_server = xSemaphoreCreateMutex();
 
 	xTaskCreate(
-		serverPowerTask,				// Function
+		serverPowerTask,		// Function
 		"Server task",			// Name (debugging purposes)
 		10000,					// Stack size in bytes
 		NULL,					// Parameters to pass
@@ -270,7 +293,7 @@ void setup() {
 	);
 
 	xTaskCreate(
-		serverUpdateTask,				// Function
+		serverUpdateTask,		// Function
 		"Update task",			// Name (debugging purposes)
 		10000,					// Stack size in bytes
 		NULL,					// Parameters to pass
@@ -278,6 +301,14 @@ void setup() {
 		NULL					// Handler
 	);
 
+	xTaskCreate(
+		timeCounterTask,
+		"Time counter",
+		10000,
+		NULL,
+		20,
+		NULL
+	);
 }
 
 
