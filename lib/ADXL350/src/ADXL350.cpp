@@ -66,12 +66,18 @@ void ADXL350::standby()
 void ADXL350::getAccRaw(int16_t *x, int16_t *y, int16_t *z)
 {
     // Read Accel Data from ADXL345 (registers 0x32 through 0x37)
-	read(ADXL350_DATAX0, ADXL350_DATA_NUM, _buff);	
-
-	// Form 2 Bytes from buffer data
-	*x = (((int16_t) _buff[1]) << 8) | _buff[0];   
-	*y = (((int16_t) _buff[3]) << 8) | _buff[2];
-	*z = (((int16_t) _buff[5]) << 8) | _buff[4];
+	if(read(ADXL350_DATAX0, ADXL350_DATA_NUM, _buff)){
+		// Form 2 Bytes from buffer data
+		*x = (((int16_t) _buff[1]) << 8) | _buff[0];   
+		*y = (((int16_t) _buff[3]) << 8) | _buff[2];
+		*z = (((int16_t) _buff[5]) << 8) | _buff[4];
+	}
+	else{
+		// Avoid "intiger divided by 0" error :)
+		*x = 1;
+		*y = 1;
+		*z = 1;
+	}
 }
 
 // Get acc in terms of +- g
@@ -218,7 +224,7 @@ void ADXL350::write(byte _address, byte _val)
 	Wire.endTransmission();  
 }
 
-void ADXL350::read(byte _address, int _num, byte _buff[])
+byte ADXL350::read(byte _address, int _num, byte _buff[])
 {
 	Wire.beginTransmission(ADXL350_ADDRESS);  
 	Wire.write(_address);             
@@ -235,8 +241,10 @@ void ADXL350::read(byte _address, int _num, byte _buff[])
 	}
 	if(i != _num){
         Serial.println("ADXL350 read error!");
+		return 0;
 	}
 	Wire.endTransmission();         	
+	return 1;
 }
 
 

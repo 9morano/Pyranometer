@@ -54,7 +54,7 @@ class ADXL350 {
 
         // I2C communication
         void write(byte _address, byte _val);
-        void read(byte _address, int _num, byte _buff[]);
+        byte read(byte _address, int _num, byte _buff[]);
         void setRegisterBit(byte regAdress, int bitPos, bool state);
 	    bool getRegisterBit(byte regAdress, int bitPos);  
 
