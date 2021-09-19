@@ -13,7 +13,7 @@
 class pyranoWIFI {
     private:
         WiFiAPClass w;
-        const char *ssid = "yourAP";
+        const char *ssid = "Pyranometer";
         const char *password = "123456789"; //Pass must be higher than 8 characters
 
     public:

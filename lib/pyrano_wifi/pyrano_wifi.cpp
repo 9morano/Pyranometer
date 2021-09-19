@@ -36,7 +36,7 @@ uint8_t pyranoWIFI::APstart(void)
 {
     is_on = 1;
     // Remove the password parameter if you want the AP to be open.
-    return w.softAP(ssid, password);
+    return w.softAP(ssid);
 }
 
 void pyranoWIFI::APstop(void)

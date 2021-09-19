@@ -38,7 +38,7 @@ FROM USER TO SERVERSIDE:
 ------------------------------------------------------------------------------------------------------
 TODO:
 * If you use Serial print, increase stack size at task startup
-* some errors occurs at startup
+
 * add calibration at each startup
 * add software reset option with esp_restart() or maybe ESP.restart()
 
@@ -141,8 +141,6 @@ void inclinationTask(void *param) {
  */
 void serverUpdateTask(void *param){
 
-	Serial.println(uxTaskGetStackHighWaterMark(NULL));
-
 	char str[22];   // 21 char + /0
 	float w = 0, p = 0, r = 0;
 
@@ -160,7 +158,6 @@ void serverUpdateTask(void *param){
 
 		SERVER_sendWebSocketMessage(REAL_TIME_DATA, str);
 
-		Serial.println(uxTaskGetStackHighWaterMark(NULL)); 
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
 		vTaskDelay(200 / portTICK_PERIOD_MS);
@@ -179,8 +176,8 @@ void serverPowerTask(void *param){
     }
 
 	// Display AP IP address
-    Serial.print("Pyranometer IP address:");
-    Serial.println(wifi.getIP());
+    //Serial.print("Pyranometer IP address:");
+    //Serial.println(wifi.getIP());
 
 	// Init server
     if(!SERVER_init()){
@@ -196,7 +193,7 @@ void serverPowerTask(void *param){
 		state = server_state;
 		xSemaphoreGive(mutex_server);
 
-		// Wait for some time, before you confirm server OFF state
+		// Wait for some time, before you confirm server OFF state.
 		// When user changes sites (index.html -> meritve.html)
 		// Sockets loose connection, therefore server gets state 0
 		// For a short period of time (apx. 3-7 sec)
@@ -366,7 +363,7 @@ void setup() {
 	xTaskCreate(
 		serverPowerTask,		// Function
 		"Server task",			// Name (debugging purposes)
-		10000,					// Stack size in bytes
+		4096,					// Stack size in bytes
 		NULL,					// Parameters to pass
 		11,						// Priority
 		NULL					// Handler
