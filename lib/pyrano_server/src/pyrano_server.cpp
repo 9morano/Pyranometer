@@ -189,7 +189,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
 
         switch(action){
 
-            case SERVER_MANAGEMENT:
+            case SERVER_OFF:
             {
                 uint8_t value = json["v"];
 
@@ -199,41 +199,41 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                     server_state = 0;
                     xSemaphoreGive(mutex_server);
                 }
-                else if(value == 1){
-                    // Get measurement filenames and send them to the client
-                    File measurements = SPIFFS.open("/measure");
+            }
+            break;
 
-                    Serial.println("Update");
+            case UPDATE_MEASUREMENT:
+            {
+                // Get measurement filenames and send them to the client
+                File measurements = SPIFFS.open("/measure");
 
-                    while(true){
-                        File file = measurements.openNextFile();
-                        
-                        if(!file){
-                            break;
-                        }
-
-                        // You could also get the size of the file...
-                        const char *str = file.name();
-
-                        // With +9 remove "/measure/" from the filename
-                        SERVER_sendWebSocketMessage(UPDATE_FILENAME, str+9);
-                        file.close();
+                while(true){
+                    File file = measurements.openNextFile();
+                    
+                    if(!file){
+                        break;
                     }
+
+                    // You could also get the size of the file...
+                    const char *str = file.name();
+
+                    // With +9 remove "/measure/" from the filename
+                    SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, str+9);
+                    file.close();
                 }
             }
             break;
 
-            case NEW_TIME:
+            case SERVER_TIME:
             {   
                 uint8_t h = 0, m = 0, s = 0;
                 char *tmp;
                 char tmp_char[10];
                 uint32_t new_time = 0;
 
-                // TODO: delete this - debug
                 const char *t = json["v"];
-                Serial.print("Received clients time:");
-                Serial.println(t);
+                //Serial.print("Received clients time:");
+                //Serial.println(t);
 
                 strncpy(tmp_char, t, 9);
 
@@ -263,7 +263,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
             }
             break;
 
-            case NEW_FILE:
+            case START_MEASUREMENT:
             {
                 char tmp_char[17] = "";
                 char *tmp;
@@ -286,9 +286,9 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                 vTaskDelete(task_handle_measure);
 
                 // Confirm to the client
-                SERVER_sendWebSocketMessage(NEW_MEASUREMENT, measurement.filename);
+                SERVER_sendWebSocketMessage(START_MEASUREMENT, measurement.filename);
                 // Add it to the list of measurements
-                SERVER_sendWebSocketMessage(UPDATE_FILENAME, measurement.filename);
+                SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, measurement.filename);
 
                 // Start new task
                 xTaskCreatePinnedToCore(
@@ -297,7 +297,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
             }
             break;
 
-            case DELETE_FILE:
+            case DELETE_MEASUREMENT:
             {
                 const char *path = json["v"];
                 char p[30] = "/measure/";
@@ -329,8 +329,8 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     // Fill the json document
     switch (action){
         case UPDATE_MEASUREMENT:
-        case UPDATE_FILENAME:
-        case NEW_MEASUREMENT:
+        case START_MEASUREMENT:
+        case REAL_TIME_DATA:
             json["a"] = action;
             json["v"] = value;
             break;
@@ -342,38 +342,14 @@ uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     }
 
     // Serialize json document and send it via WS
-    char data[40];
+	// example: {"a":1,"v":"0000.00|-24.0|-24.0|66.0"}
+	// there is 38 characters +1 for /0 delimiter - taking 42 just in case
+    char data[42];
     size_t len = serializeJson(json, data);
     ws.textAll(data, len);
 
     return 1;
 }
 
-
-
-
-uint8_t SERVER_sendUpdatedMeasurements(float power, float pitch, float roll, uint8_t temp){
-
-    /* Possible measurements and their max values:
-     * --------------
-     * power: 1000.0
-     * pitch: -90.0
-     * roll : -90.0
-     * temp : 70
-     * --------------
-     * together it takes 18 chars for measurements + 3 for delimiters (|)
-     * 
-     * example: {"a":1,"v":"0000|-24.0|-24.0|66.0"}
-     * there is 37 characters +1 for /0 delimiter - taking 40 just in case
-     */
-
-    char str[22];   // 21 char + /0
-
-    // Store the values into one string
-    sprintf(str, "%4.1f|%3.1f|%3.1f|%d", power, pitch, roll, temp);
-
-    SERVER_sendWebSocketMessage(UPDATE_MEASUREMENT, str);
-    return 1;
-}
 
 

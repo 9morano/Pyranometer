@@ -97,7 +97,7 @@ void ADXL350::getInclination(float *pitch, float *roll)
 	float _x, _y, _z;
 	getAcc(&_x, &_y, &_z);
 
-	if(((_x == 0)&&(_z == 0)) || (_y == 0)&&(_z == 0)){
+	if(((_x == 0)&&(_z == 0)) || ((_y == 0)&&(_z == 0))){
 		*roll = 0;
 		*pitch = 0;
 		Serial.println("Division by zero!");

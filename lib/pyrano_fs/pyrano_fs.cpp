@@ -93,7 +93,7 @@ uint8_t FileSystem::createFile(const char *filename)
     }
     else{
         Serial.printf("Created new measurements file: %s \n", path);
-        f.print("Datoteka z meritvami");
+        f.print("Meritve:\n");
         success = 1;
 
     }
@@ -188,7 +188,7 @@ uint8_t FileSystem::storeMeasurement(float *power, float *pitch, float *roll, ui
     char str[21];
 
     // Store the values into string
-    sprintf(str, "%3.1f,%3.1f,%3.1f,%d", *power, *pitch, *roll, *temp);
+    sprintf(str, "%3.1f,%3.1f,%3.1f,%d\n", *power, *pitch, *roll, *temp);
 
     // Return 0 if there is an error
     return append(_current_filename, str);
@@ -212,7 +212,7 @@ uint8_t FileSystem::storeMeasurementWTimstamp(float *power, float *pitch, float 
     char str[30];
 
     // Store the values into string
-    sprintf(str, "[%d%d%d]%3.1f,%3.1f,%3.1f,%d", *h, *m, *s, *power, *pitch, *roll, *temp);
+    sprintf(str, "[%d%d%d]%3.1f,%3.1f,%3.1f,%d\n", *h, *m, *s, *power, *pitch, *roll, *temp);
 
     // Return 0 if there is an error
     return append(_current_filename, str);

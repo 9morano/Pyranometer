@@ -102,9 +102,7 @@ void inclinationTask(void *param) {
 		if(digitalRead(14)){
 			if(adxl.getActivity()){
 				Serial.println("Activity detected!");
-				xSemaphoreTake(mutex_server, portMAX_DELAY);
-				server_state = 1;
-				xSemaphoreGive(mutex_server);
+				toggleWiFi(1);
 			}
 		}
 
@@ -132,9 +130,22 @@ void serverUpdateTask(void *param){
 		adc.getPowa(&powa);
 		xSemaphoreGive(mutex_inclination);
 
-		//Serial.println(p);
+		/* Possible measurements and their max values:
+		* --------------
+		* power: 1000.0
+		* pitch: -90.0
+		* roll : -90.0
+		* temp : 70
+		* --------------
+		* together it takes 18 chars for measurements + 3 for delimiters (|)
+		*/
 
-		SERVER_sendUpdatedMeasurements(powa, p, r, 0);
+    	char str[22];   // 21 char + /0
+
+		// Store the values into one string
+		sprintf(str, "%4.1f|%3.1f|%3.1f|%d", powa, p, r, 0);
+
+		SERVER_sendWebSocketMessage(REAL_TIME_DATA, str);
 
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
@@ -183,7 +194,6 @@ void serverPowerTask(void *param){
 			xSemaphoreGive(mutex_server);
 
 			if(state == 0){
-				Serial.println("Toggle wifi");
 				toggleWiFi(state);
 			}
 		}
@@ -194,6 +204,7 @@ void serverPowerTask(void *param){
 void toggleWiFi(uint8_t turnon) {
 	if(turnon){
 		if(!wifi.is_on){
+			Serial.println("Wifi On");
         	if(!wifi.APstart()){
             	Serial.println("Failed to start the AP");
             	error();
@@ -212,6 +223,7 @@ void toggleWiFi(uint8_t turnon) {
 	}
 	else{
 		if(wifi.is_on){
+			Serial.println("WiFi off");
 			wifi.APstop();
         	SERVER_stop();
 			vTaskDelete(task_handle_update);
@@ -312,6 +324,7 @@ void measurementTask(void *param){
 				Serial.println("WARNING: Failed to store msmnt!");
 				vTaskDelete(NULL);
 			}
+			Serial.println("Store");
 
 			vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
 		}
@@ -328,11 +341,10 @@ void setup() {
 	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
 	adxl.setRange(1);
   	adxl.setDataRate(25);
-	// Init activity detection
 	pinMode(14, INPUT_PULLUP);
 	adxl.initActivityInt();
-	// TODO: Confirm correct setup.
-	adxl.printAllRegister();
+	// Confirm correct setup.
+	//adxl.printAllRegister();
 	adxl.begin();
 
 	adc.setup();
@@ -384,21 +396,17 @@ void setup() {
 		&task_handle_measure,					// Handler
 		1
 	);
-
 }
 
 
 
 void loop() {
 	SERVER_cleanup();
-	//Serial.println("Here");
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
-
 }
 
 
 void error(uint8_t reboot){
-
     configASSERT(0);
 }
 

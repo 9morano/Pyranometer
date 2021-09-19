@@ -5,19 +5,12 @@
 var websocket;
 
 const action = {
-	UPDATE_MEASUREMENT: 0,
-    UPDATE_FILENAME:    1,
-	SERVER_MANAGEMENT:  2,
-	NEW_TIME:           3,
-    NEW_FILE:           4,
-    DELETE_FILE:        5,
-    NEW_MEASUREMENT:    6,
-}
-
-const value = {
-    TURN_OFF:           0,  // Turn the server off
-    UPDATE:             1,  // Update the list of measurement files
-
+    REAL_TIME_DATA:     0,
+    SERVER_OFF:         1,
+    SERVER_TIME:        2,
+    DELETE_MEASUREMENT: 3,
+    START_MEASUREMENT:  4,
+    UPDATE_MEASUREMENT: 5,
 }
 
 
@@ -39,11 +32,12 @@ function onOpen(event) {
     if(document.URL.includes("index")){
         var today = new Date();
         var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-        sendMessage(action.NEW_TIME, time);
+        sendMessage(action.SERVER_TIME, time);
     }
     else{
         // Action with value 1 updates list of stored measurement files
-        sendMessage(action.SERVER_MANAGEMENT, value.UPDATE);
+        deleteAllMeasurementsFile();
+        sendMessage(action.UPDATE_MEASUREMENT, "0");
     }
 }
 
@@ -66,7 +60,7 @@ function receiveMessage(event) {
 
     switch(data.a) {
 
-        case action.UPDATE_MEASUREMENT:
+        case action.REAL_TIME_DATA:
             console.log(data.v);
 
             let measurements = data.v.split("|");
@@ -79,12 +73,12 @@ function receiveMessage(event) {
             }
             break;
 
-        case action.UPDATE_FILENAME:
+        case action.UPDATE_MEASUREMENT:
             console.log("New measurement file" + data.v);
             addMeasurementFile(data.v);
             break;
 
-        case action.NEW_MEASUREMENT:
+        case action.START_MEASUREMENT:
             $("#msmnt_0").text(data.v);
             break;
 
@@ -105,7 +99,7 @@ function sendMessage(action, value) {
  *--------------------------------------------------------------------------------------------*/
 function turnServerOff(){
     console.log("Turn the server off!");
-    sendMessage(action.SERVER_MANAGEMENT, value.TURN_OFF);
+    sendMessage(action.SERVER_OFF, 0);
 
     // TODO close the browser - doesn't work with Firefox 86 
     var conf = confirm("Če se okno ne zapre, ga zaprite ročno!");
@@ -153,7 +147,14 @@ function deleteMeasurementFile(filename){
     console.log("Izbrisi " + filename);
 
     document.getElementById(filename).remove();
-    sendMessage(action.DELETE_FILE, filename);
+    sendMessage(action.DELETE_MEASUREMENT, filename);
+}
+
+function deleteAllMeasurementsFile(){
+    document.getElementById("measurements_container").remove();
+
+    var element = $('<div id="measurements_container"> <h2 id="stored_measurements">SHRANJENE MERITVE</h2></div>');
+    $("#neki").after(element);
 }
 
 function downloadMeasurementsFile(filename){
@@ -173,7 +174,7 @@ function startNewMeasurement(){
 
     var data =  filename + "|" + period;
     console.log(data);
-    sendMessage(action.NEW_FILE, data);
+    sendMessage(action.START_MEASUREMENT, data);
 }
 
 /*--------------------------------------------------------------------------------------------

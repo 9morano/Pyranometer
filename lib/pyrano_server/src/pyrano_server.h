@@ -25,8 +25,15 @@
 
 
 // Definitions for possible message
-enum actions{UPDATE_MEASUREMENT, UPDATE_FILENAME, SERVER_MANAGEMENT, NEW_TIME, NEW_FILE, DELETE_FILE, NEW_MEASUREMENT};
-enum values{TURN_OFF, UPDATE};
+enum actions{
+    REAL_TIME_DATA,
+    SERVER_OFF,
+    SERVER_TIME,
+    DELETE_MEASUREMENT,
+    START_MEASUREMENT,
+    UPDATE_MEASUREMENT
+};
+
 
 // Global varables shared with main code and server code
 extern uint32_t global_time;
@@ -53,10 +60,8 @@ uint8_t SERVER_start(void);
 uint8_t SERVER_stop(void);
 void SERVER_cleanup(void);
 
-uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value);
-uint8_t SERVER_sendUpdatedMeasurements(float power, float pitch, float roll, uint8_t temp);
-
 String SERVER_processor(const String& var);
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len);
+uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value);
