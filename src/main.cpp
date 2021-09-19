@@ -37,9 +37,12 @@ FROM USER TO SERVERSIDE:
 
 ------------------------------------------------------------------------------------------------------
 TODO:
+* If you use Serial print, increase stack size at task startup
 * some errors occurs at startup
 * add calibration at each startup
 * add software reset option with esp_restart() or maybe ESP.restart()
+
+* When activity detected, server goes on ... but what if the user doesnt connect to it, how does it turn off -.-
 
 * check stack size with Serial.println(uxTaskGetStackHighWaterMark(NULL)); --> tells how much stack is left there
 
@@ -63,7 +66,7 @@ SemaphoreHandle_t mutex_time;
 
 
 // Global mesurement variables
-float pitch_g = 0, roll_g = 0;	// Angle - inclination
+float pitch_g = 0, roll_g = 0, powa_g = 0;
 static SemaphoreHandle_t mutex_inclination;
 
 
@@ -90,63 +93,74 @@ void error(uint8_t reboot = 0);
  */
 void inclinationTask(void *param) {
 
+	float powa = 0, pitch = 0, roll = 0;
+
+	adc.startOneshot();
+
 	while(1){
 
-		// Get inclination
+		// Optain measurements
+		adxl.getInclination(&pitch, &roll);
+		adc.getPowa(&powa);
+
+		// Apply LPF - low pass filter
 		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
-		adxl.getInclinationLPF(&pitch_g, &roll_g);
+		powa_g = powa_g * 0.9 + powa * 0.1;
+		roll_g = roll_g * 0.9 + roll * 0.1;
+		pitch_g = pitch_g * 0.9 + pitch * 0.1;
 		xSemaphoreGive(mutex_inclination);
 		//Serial.println(pitch_g);
 
-		// Check for activity interupt - do it after the inclination
+		// Check for activity interupt
 		if(digitalRead(14)){
 			if(adxl.getActivity()){
-				Serial.println("Activity detected!");
+				//Serial.println("Activity detected!");
+				xSemaphoreTake(mutex_server, portMAX_DELAY);
+                server_state = 1;
+                xSemaphoreGive(mutex_server);
 				toggleWiFi(1);
 			}
 		}
+		adc.startOneshot();
 
 		// Delay for 50ms
-		vTaskDelay(50 / portTICK_PERIOD_MS);
+		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 }
 
 
 /* Task to send updates to the server - every 200ms
- * Use inclination mutex to prevent simultaneous access to resources
- * from other tasks...inclination may suffer, but I'm not payed for this
+ * Possible measurements and their max values:
+	* --------------
+	* power: 1000.0
+	* pitch: -90.0
+	* roll : -90.0
+	* temp : 70
+	* --------------
+	* together it takes 18 chars for measurements + 3 for delimiters (|)
  */
 void serverUpdateTask(void *param){
 
-	float powa = 0, p = 0, r = 0;
+	Serial.println(uxTaskGetStackHighWaterMark(NULL));
+
+	char str[22];   // 21 char + /0
+	float w = 0, p = 0, r = 0;
 
 	while(1){
 
-		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
-		adc.startOneshot();
 		// Obtain the temperature 
+		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		p = pitch_g;
 		r = roll_g;
-		adc.getPowa(&powa);
+		w = powa_g;
 		xSemaphoreGive(mutex_inclination);
 
-		/* Possible measurements and their max values:
-		* --------------
-		* power: 1000.0
-		* pitch: -90.0
-		* roll : -90.0
-		* temp : 70
-		* --------------
-		* together it takes 18 chars for measurements + 3 for delimiters (|)
-		*/
-
-    	char str[22];   // 21 char + /0
-
 		// Store the values into one string
-		sprintf(str, "%4.1f|%3.1f|%3.1f|%d", powa, p, r, 0);
+		sprintf(str, "%4.1f|%3.1f|%3.1f|%d", w, p, r, 0);
 
 		SERVER_sendWebSocketMessage(REAL_TIME_DATA, str);
 
+		Serial.println(uxTaskGetStackHighWaterMark(NULL)); 
 		// WebSockets on ESP32 can do max 15 emssages per second
 		// https://github.com/me-no-dev/ESPAsyncWebServer/issues/504
 		vTaskDelay(200 / portTICK_PERIOD_MS);
@@ -214,7 +228,7 @@ void toggleWiFi(uint8_t turnon) {
 			xTaskCreate(
 				serverUpdateTask,		// Function
 				"Update task",			// Name (debugging purposes)
-				10000,					// Stack size in bytes
+				4096,					// Stack size in bytes
 				NULL,					// Parameters to pass
 				8,						// Priority
 				&task_handle_update		// Handler
@@ -296,38 +310,33 @@ void measurementTask(void *param){
 
 	m_file.createFile(filename);
 
-	//while(1){
+	while(1){
 
-		while(1){
+		// Get the inclination and TODO: temperature
+		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
+		pitch = pitch_g;
+		roll = roll_g;
+		powa = powa_g;
+		xSemaphoreGive(mutex_inclination);
 
-			// Measure stuff
-			xSemaphoreTake(mutex_inclination, portMAX_DELAY);
-			adc.startOneshot();
-			// Obtain the temperature 
-			pitch = pitch_g;
-			roll = roll_g;
-			adc.getPowa(&powa);
-			xSemaphoreGive(mutex_inclination);
+		// Get timestamp
+		xSemaphoreTake(mutex_time, portMAX_DELAY);
+		time = global_time;
+		xSemaphoreGive(mutex_time);
 
-			// Get timestamp
-			xSemaphoreTake(mutex_time, portMAX_DELAY);
-			time = global_time;
-			xSemaphoreGive(mutex_time);
+		s = (uint8_t)(time & 0xff);
+		m = (uint8_t)((time >> 8 ) & 0xff);
+		h = (uint8_t)((time >> 16) & 0xff);
 
-			s = (uint8_t)(time & 0xff);
-			m = (uint8_t)((time >> 8 ) & 0xff);
-			h = (uint8_t)((time >> 16) & 0xff);
-
-			if(m_file.storeMeasurementWTimstamp(&powa, &pitch, &roll, &temp, &h, &m, &s) != 1){
-				// TODO: if we get error, memory is most likely full
-				// Stop with the measurement task and inform user if possible
-				Serial.println("WARNING: Failed to store msmnt!");
-				vTaskDelete(NULL);
-			}
-			Serial.println("Store");
-
-			vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
+		if(m_file.storeMeasurementWTimstamp(&powa, &pitch, &roll, &temp, &h, &m, &s) != 1){
+			// TODO: if we get error, memory is most likely full
+			// Stop with the measurement task and inform user if possible
+			Serial.println("WARNING: Failed to store msmnt!");
+			vTaskDelete(NULL);
 		}
+
+		vTaskDelay(period * 1000 / portTICK_PERIOD_MS);
+	}
 }
 
 void setup() {
@@ -347,6 +356,7 @@ void setup() {
 	//adxl.printAllRegister();
 	adxl.begin();
 
+	// Init analog to digital converter
 	adc.setup();
 
 	mutex_inclination = xSemaphoreCreateMutex();
@@ -365,7 +375,7 @@ void setup() {
 	xTaskCreatePinnedToCore(
 		inclinationTask,		// Function
 		"Inclination task",		// Name (debugging purposes)
-		2000,					// Stack size in bytes
+		2000,					// Stack size in bytes (1024 should do)
 		NULL,					// Parameters to pass
 		10,						// Priority
 		NULL,	// Handler
@@ -381,6 +391,16 @@ void setup() {
 		NULL,
 		1
 	);
+
+	/*xTaskCreatePinnedToCore(
+		sunlightTask,
+		"Sunlight task",
+		1000,
+		NULL,
+		10,
+		NULL,
+		1
+	);*/
 
 	// Start default measurement file with period of 10 minutes
 	Measurement_t measurement;

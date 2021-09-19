@@ -143,21 +143,21 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 
     switch (type) {
         case WS_EVT_CONNECT:
-            Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+            Serial.printf("Client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
             xSemaphoreTake(mutex_server, portMAX_DELAY);
             server_state = 1;
             xSemaphoreGive(mutex_server);
             break;
 
         case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%u disconnected\n", client->id());
+            Serial.printf("Client #%u disconnected\n", client->id());
             xSemaphoreTake(mutex_server, portMAX_DELAY);
             server_state = 0;
             xSemaphoreGive(mutex_server);
             break;
 
         case WS_EVT_DATA:
-            Serial.printf("Received data from client %s: ", client->remoteIP().toString().c_str());
+            Serial.printf("Client data %s: ", client->remoteIP().toString().c_str());
             SERVER_receiveWebSocketMessage(arg, data, len);
             break;
 
@@ -179,7 +179,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
         StaticJsonDocument<size> json;
         DeserializationError err = deserializeJson(json, data);
         if (err) {
-            Serial.print(F("deserializeJson() failed with code "));
+            Serial.print(F("deserializeJson() failed"));
             Serial.println(err.c_str());
         }
 
