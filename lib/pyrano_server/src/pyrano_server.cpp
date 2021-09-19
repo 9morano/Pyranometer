@@ -144,10 +144,16 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
     switch (type) {
         case WS_EVT_CONNECT:
             Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+            xSemaphoreTake(mutex_server, portMAX_DELAY);
+            server_state = 1;
+            xSemaphoreGive(mutex_server);
             break;
 
         case WS_EVT_DISCONNECT:
             Serial.printf("WebSocket client #%u disconnected\n", client->id());
+            xSemaphoreTake(mutex_server, portMAX_DELAY);
+            server_state = 0;
+            xSemaphoreGive(mutex_server);
             break;
 
         case WS_EVT_DATA:
@@ -197,7 +203,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
                     // Get measurement filenames and send them to the client
                     File measurements = SPIFFS.open("/measure");
 
-                    Serial.print("Update");
+                    Serial.println("Update");
 
                     while(true){
                         File file = measurements.openNextFile();

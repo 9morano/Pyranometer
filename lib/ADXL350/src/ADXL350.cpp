@@ -97,12 +97,19 @@ void ADXL350::getInclination(float *pitch, float *roll)
 	float _x, _y, _z;
 	getAcc(&_x, &_y, &_z);
 
-	// Calculate roll and pitch (rotation around X-axis and Y-axis)
-	// https://www.nxp.com/files-static/sensors/doc/app_note/AN3461.pdf
-	// atan( y / sqrt(x2)  + z2) * 180 / pi
-	// atan( -x / sqrt(y2)  + z2) * 180 / pi
-	*roll = atan(_y / sqrt(pow(_x, 2) + pow(_z, 2))) * 180 / PI;
-	*pitch = atan(-1 * _x / sqrt(pow(_y, 2) + pow(_z, 2))) * 180 / PI;
+	if(((_x == 0)&&(_z == 0)) || (_y == 0)&&(_z == 0)){
+		*roll = 0;
+		*pitch = 0;
+		Serial.println("Division by zero!");
+	}
+	else{
+		// Calculate roll and pitch (rotation around X-axis and Y-axis)
+		// https://www.nxp.com/files-static/sensors/doc/app_note/AN3461.pdf
+		// atan( y / sqrt(x2)  + z2) * 180 / pi
+		// atan( -x / sqrt(y2)  + z2) * 180 / pi
+		*roll = atan(_y / sqrt(pow(_x, 2) + pow(_z, 2))) * 180 / PI;
+		*pitch = atan(-1 * _x / sqrt(pow(_y, 2) + pow(_z, 2))) * 180 / PI;
+	}
 }
 
 // Smoother results (insensitive to shaking), but slower response
@@ -535,3 +542,38 @@ byte ADXL350::getInterupt(void)
 	}
 }
 
+// Set up activity interupt
+// TODO poigrej se mal sz vrednostmi
+void ADXL350::initActivityInt(void)
+{
+	byte _r;
+
+	// Disable all interupts before setup
+	write(ADXL350_INT_ENABLE, 0);
+
+	// Map activity interupt to pin INT2
+	setRegisterBit(ADXL350_INT_MAP, 4, true);
+	// Set treshold
+	write(ADXL350_THRESH_ACT, _activity_threshold);
+	// Select axis to participate in activity detection (x = 6, y = 5, z = 4)
+	_r = B01100000;
+	write(ADXL350_ACT_INACT_CTL, _r);
+
+	// Enable only activity interupts 
+	_r = B00010000;
+	write(ADXL350_INT_ENABLE, _r);
+}
+
+byte ADXL350::getActivity(void)
+{
+	byte _r;
+	read(ADXL350_INT_SOURCE, 1, &_r);
+
+	// If activity bit is set
+	if((_r & B00010000) == B00010000){
+		return 1;
+	}
+	else{
+		return 0;
+	}
+}

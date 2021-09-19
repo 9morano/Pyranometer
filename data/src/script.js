@@ -105,7 +105,7 @@ function sendMessage(action, value) {
  *--------------------------------------------------------------------------------------------*/
 function turnServerOff(){
     console.log("Turn the server off!");
-    sendMessage(action.SERVER_MANAGEMENT, val.TURN_OFF);
+    sendMessage(action.SERVER_MANAGEMENT, value.TURN_OFF);
 
     // TODO close the browser - doesn't work with Firefox 86 
     var conf = confirm("Če se okno ne zapre, ga zaprite ročno!");

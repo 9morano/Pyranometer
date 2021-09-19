@@ -24,6 +24,8 @@ class ADXL350 {
         void autoCalibrate();
         void initInterupt(void);
         byte getInterupt(void);
+        void initActivityInt(void);
+        byte getActivity(void);
 
         void printAllRegister();
 
@@ -36,7 +38,7 @@ class ADXL350 {
          * Activity bit is set when value is larger than TRESH_ACT register
          * Threshold value is unsigned byte (8 bits) in scale of 31.2 mg/LSB
          */
-        byte _activity_threshold = 0x64;    // 3g          
+        byte _activity_threshold = 0x32;    // 3g          
 
         /*
          * DOUBLE TAP INTERUPT CONFIG

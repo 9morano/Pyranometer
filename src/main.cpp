@@ -10,8 +10,6 @@ AT STARTUP:
 WHEN USER SENDS START CMD: (new measurement)
 * obtain filename, period and clients time, then start the measurement task. Use the period to call the 
 function repeatedly and update the timestamp accordingly
-* TODO: check if the msmnt is allready running - stop it in that case
-* TODO: confirm to the user
 
 WHEN USER SENDS DOWNLOAD CMD:
 * send the CSV file to the user and optionally the stop measurement task
@@ -26,7 +24,7 @@ AFTER 3MIN OF INACTIVITY:
 
 FROM MAIN LOOP TO SERVERSIDE:
 * Warning that measurement is full
-* warning that measurements cant saved (could not create file?)
+* warning that measurements cant be saved (could not create file?)
 
 * Update measurements periodically
 * send csv file
@@ -39,9 +37,11 @@ FROM USER TO SERVERSIDE:
 
 ------------------------------------------------------------------------------------------------------
 TODO:
-* add timestamp to the measurements file
 * some errors occurs at startup
 * add calibration at each startup
+* add software reset option with esp_restart() or maybe ESP.restart()
+
+* check stack size with Serial.println(uxTaskGetStackHighWaterMark(NULL)); --> tells how much stack is left there
 
 */
 #include <Arduino.h>
@@ -76,6 +76,7 @@ FileSystem m_file;
 
 // Task handles for task controll
 TaskHandle_t task_handle_measure = NULL;
+TaskHandle_t task_handle_update = NULL;
 TaskHandle_t task_handle_time = NULL;
 
 
@@ -89,22 +90,23 @@ void error(uint8_t reboot = 0);
  */
 void inclinationTask(void *param) {
 
-	// Init accelerometer (defines in project-config.h)
-	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
-	adxl.setRange(1);
-  	adxl.setDataRate(25);
-
-	//adxl.printAllRegister();
-	// TODO: Confirm correct setup.
-	adxl.begin();
-
-
 	while(1){
+
 		// Get inclination
 		xSemaphoreTake(mutex_inclination, portMAX_DELAY);
 		adxl.getInclinationLPF(&pitch_g, &roll_g);
-		//Serial.println(pitch_g);
 		xSemaphoreGive(mutex_inclination);
+		//Serial.println(pitch_g);
+
+		// Check for activity interupt - do it after the inclination
+		if(digitalRead(14)){
+			if(adxl.getActivity()){
+				Serial.println("Activity detected!");
+				xSemaphoreTake(mutex_server, portMAX_DELAY);
+				server_state = 1;
+				xSemaphoreGive(mutex_server);
+			}
+		}
 
 		// Delay for 50ms
 		vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -144,9 +146,8 @@ void serverPowerTask(void *param){
 
 	uint8_t state = 1;
 
-	
 	// Init WiFi AP
-    Serial.println("Configuring access point...");
+    //Serial.println("Configuring access point...");
     if(!wifi.init()){
         Serial.println("Failed to configure Access Point!");
         error();
@@ -170,9 +171,51 @@ void serverPowerTask(void *param){
 		state = server_state;
 		xSemaphoreGive(mutex_server);
 
-		toggleWiFi(state);
+		// Wait for some time, before you confirm server OFF state
+		// When user changes sites (index.html -> meritve.html)
+		// Sockets loose connection, therefore server gets state 0
+		// For a short period of time (apx. 3-7 sec)
+		if(state == 0){
+			vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+			xSemaphoreTake(mutex_server, portMAX_DELAY);
+			state = server_state;
+			xSemaphoreGive(mutex_server);
+
+			if(state == 0){
+				Serial.println("Toggle wifi");
+				toggleWiFi(state);
+			}
+		}
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+}
+
+void toggleWiFi(uint8_t turnon) {
+	if(turnon){
+		if(!wifi.is_on){
+        	if(!wifi.APstart()){
+            	Serial.println("Failed to start the AP");
+            	error();
+        	}
+        	SERVER_start();
+			
+			xTaskCreate(
+				serverUpdateTask,		// Function
+				"Update task",			// Name (debugging purposes)
+				10000,					// Stack size in bytes
+				NULL,					// Parameters to pass
+				8,						// Priority
+				&task_handle_update		// Handler
+			);
+    	} 
+	}
+	else{
+		if(wifi.is_on){
+			wifi.APstop();
+        	SERVER_stop();
+			vTaskDelete(task_handle_update);
+		}
 	}
 }
 
@@ -281,6 +324,17 @@ void setup() {
 	m_file.setup();
 	m_file.printInfo();
 
+	// Init accelerometer (defines in project-config.h)
+	adxl.setup(ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z);
+	adxl.setRange(1);
+  	adxl.setDataRate(25);
+	// Init activity detection
+	pinMode(14, INPUT_PULLUP);
+	adxl.initActivityInt();
+	// TODO: Confirm correct setup.
+	adxl.printAllRegister();
+	adxl.begin();
+
 	adc.setup();
 
 	mutex_inclination = xSemaphoreCreateMutex();
@@ -304,15 +358,6 @@ void setup() {
 		10,						// Priority
 		NULL,	// Handler
 		1
-	);
-
-	xTaskCreate(
-		serverUpdateTask,		// Function
-		"Update task",			// Name (debugging purposes)
-		10000,					// Stack size in bytes
-		NULL,					// Parameters to pass
-		8,						// Priority
-		NULL					// Handler
 	);
 
 	xTaskCreatePinnedToCore(
@@ -357,30 +402,3 @@ void error(uint8_t reboot){
     configASSERT(0);
 }
 
-void toggleWiFi(uint8_t turnon) {
-
-	if(turnon){
-		if(!wifi.is_on){
-			Serial.println("Turn on the wifi");
-        	if(!wifi.APstart()){
-            	Serial.println("Failed to start the AP");
-            	error();
-        	}
-        	SERVER_start();
-    	} 
-		else {
-			//Serial.println("WiFi is allready on!");
-		}
-	}
-	else{
-		if(wifi.is_on){
-			Serial.println("Turn the wifi off");
-			wifi.APstop();
-        	SERVER_stop();
-		}
-		else{
-			//Serial.println("WiFi is allready off!");
-		}
-	}
-
-}
