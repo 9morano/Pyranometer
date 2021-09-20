@@ -123,7 +123,7 @@ void inclinationTask(void *param) {
 		}
 		adc.startOneshot();
 
-		// Delay for 50ms
+		// Delay for 100ms
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 }

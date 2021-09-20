@@ -212,7 +212,7 @@ uint8_t FileSystem::storeMeasurementWTimstamp(float *power, float *pitch, float 
     char str[30];
 
     // Store the values into string
-    sprintf(str, "[%d%d%d]%3.1f,%3.1f,%3.1f,%d\n", *h, *m, *s, *power, *pitch, *roll, *temp);
+    sprintf(str, "[%2d%2d%2d]%3.1f,%3.1f,%3.1f,%d\n", *h, *m, *s, *power, *pitch, *roll, *temp);
 
     // Return 0 if there is an error
     return append(_current_filename, str);

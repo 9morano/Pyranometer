@@ -202,10 +202,6 @@ $(document).ready(function(){
         }
     }
 
-    //addMeasurementFile("01_08_2021_0.txt");
-    //addMeasurementFile("01_08_2021_1.txt");
-
     // Init websockets
     initWebSocket();
-
 });
