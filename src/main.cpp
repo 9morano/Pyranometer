@@ -1,3 +1,8 @@
+
+// Board specific configuration are located in /include/pyrano-config.h
+
+
+
 /* SHORT DESCRIPTION:
 ------------------------------------------------------------------------------------------------------
 AT STARTUP:
@@ -48,7 +53,7 @@ TODO:
 
 */
 #include <Arduino.h>
-#include "project-config.h"
+#include "pyrano-config.h"
 #include "pyrano_server.h"
 #include "pyrano_wifi.h"
 #include "pyrano_fs.h"
@@ -389,16 +394,6 @@ void setup() {
 		1
 	);
 
-	/*xTaskCreatePinnedToCore(
-		sunlightTask,
-		"Sunlight task",
-		1000,
-		NULL,
-		10,
-		NULL,
-		1
-	);*/
-
 	// Start default measurement file with period of 10 minutes
 	Measurement_t measurement;
 	strncpy(measurement.filename, "31_07_2021", 12);
@@ -416,13 +411,18 @@ void setup() {
 }
 
 
-
+/**
+ * Main (IDLE) loop - taking care of server workaround.
+ */
 void loop() {
 	SERVER_cleanup();
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
 
 
+/**
+ * Development purpose ..
+ */
 void error(uint8_t reboot){
     configASSERT(0);
 }
