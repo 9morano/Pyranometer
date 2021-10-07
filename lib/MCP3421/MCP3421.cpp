@@ -115,8 +115,9 @@ void MCP3421::getPowa(float *power)
 
     *power = _voltage / 100;
 
-
-    // TODO: correction!
+    // Cell correction 
+    // Under reference we measured 1051W intead of 1000W
+    *power = *power * 0.9514748;
 
     // Because we turned our cells the wrong way, values are inverted :D
     *power = abs(*power);
