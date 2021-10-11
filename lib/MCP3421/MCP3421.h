@@ -39,7 +39,6 @@
 /*---------------------------------------------------------------------------------*/
 #define SDA_PIN				(26) 			
 #define SCL_PIN				(27)
-uint8_t MCP3421_ADDRESS	 = 0x69;
 
 /*---------------------------------------------------------------------------------*/
 /*---------------------------------- ADC CLASS ------------------------------------*/
@@ -108,6 +107,7 @@ class MCP3421 {
     private:
         // Single shot with max gain and 16bit resolution
         uint8_t _config_register = B00011011;
+        uint8_t MCP3421_ADDRESS	 = 0x69;
 
         /**
          * Writes into config register - you can only write the config register
