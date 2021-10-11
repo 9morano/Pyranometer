@@ -1,3 +1,3 @@
 # ADXL350 library
 
-Custom library for ADXL350 I2C interface.
+Custom library for ADXL350 with I2C interface.

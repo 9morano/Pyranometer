@@ -1,7 +1,13 @@
+/************************************************************************************
+ * @version 3
+ * @author 9morano
+ * @date 30.09.2021
+ * @todo Delete debug printf functions .. 
+ ***********************************************************************************/
 
 #include "pyrano_fs.h"
 
-
+/*---------------------------------------------------------------------------------*/
 void FileSystem::setup(void)
 {
     if(!SPIFFS.begin()){
@@ -9,6 +15,7 @@ void FileSystem::setup(void)
     }
 }
 
+/*---------------------------------------------------------------------------------*/
 void FileSystem::printInfo(void)
 {
     uint32_t totalBytes = SPIFFS.totalBytes();
@@ -29,6 +36,7 @@ void FileSystem::printInfo(void)
 
 }
 
+/*---------------------------------------------------------------------------------*/
 void FileSystem::printFiles(void)
 {
     File root = SPIFFS.open("/");
@@ -46,7 +54,7 @@ void FileSystem::printFiles(void)
   }
 }
 
-
+/*---------------------------------------------------------------------------------*/
 void FileSystem::printMeasurementsFiles(void)
 {
     File measurements = SPIFFS.open("/measure");
@@ -66,7 +74,7 @@ void FileSystem::printMeasurementsFiles(void)
     }
 }
 
-
+/*---------------------------------------------------------------------------------*/
 void FileSystem::deleteFile(const char *path)
 {
     Serial.printf("Deleting file: %s\r\n", path);
@@ -75,9 +83,10 @@ void FileSystem::deleteFile(const char *path)
     }
 }
 
+/*---------------------------------------------------------------------------------*/
 uint8_t FileSystem::createFile(const char *filename)
 {
-    char path[30] = "";
+    char path[31] = "";
     char appendix[5] = ".csv";
     uint8_t success = 0;
 
@@ -98,10 +107,11 @@ uint8_t FileSystem::createFile(const char *filename)
 
     }
 
-    strncpy(_current_filename, path, 30);
+    strncpy(_current_filename, path, 31);
     return success;    
 }
 
+/*---------------------------------------------------------------------------------*/
 /*
  * Gracefull attempt to store measurements in case the filename is the same...
  * Nevermind - stored here if someone will try to do the same :) 
@@ -145,6 +155,7 @@ uint8_t FileSystem::createFile(const char *filename)
     return success;    
 }*/
 
+/*---------------------------------------------------------------------------------*/
 uint8_t FileSystem::changeCurrentFilename(const char *filename)
 {
     uint8_t success = 0;
@@ -155,9 +166,63 @@ uint8_t FileSystem::changeCurrentFilename(const char *filename)
     return success;
 }
 
+/*---------------------------------------------------------------------------------*/
+uint8_t FileSystem::storeMeasurement(float *power, float *pitch, float *roll, uint8_t *temp)
+{
+    /* Possible measurements and their max values:
+     * --------------
+     * power: 1999.9
+     * pitch: -90.0
+     * roll : -90.0
+     * temp : 70
+     * --------------
+     * together it takes 18 chars for measurements + 3 for comma delimiter (,) + /0
+     */
+
+    // Taking one more just in case if some - appearers at temperatures
+    char str[23];
+
+    // Store the values into string
+    sprintf(str, "%4.1f,%3.1f,%3.1f,%d\n", *power, *pitch, *roll, *temp);
+
+    // Return 0 if there is an error
+    return append(_current_filename, str);
+}
+
+/*---------------------------------------------------------------------------------*/
+uint8_t FileSystem::storeMeasurementWTimstamp(float *power, float *pitch, float *roll, uint8_t *temp, uint8_t *h, uint8_t *m, uint8_t *s)
+{
+    /* Possible measurements and their max values:
+     * --------------
+     * power: 1999.9
+     * pitch: -90.0
+     * roll : -90.0
+     * temp : 70
+     * --------------
+     * together it takes 18 chars for measurements + 3 for comma delimiter (,) + /0
+     * plus another
+     * --------------
+     * time: 081032
+     * --------------
+     * 6 chars for time + 1 for comma delimiter (,)
+     */
+    
+    // Taking one more just in case if some - appearers at temperatures
+    char str[30];
+
+    // Store the values into string
+    sprintf(str, "%02d%02d%02d,%3.1f,%3.1f,%3.1f,%d\n", *h, *m, *s, *power, *pitch, *roll, *temp);
+
+    // Return 0 if there is an error
+    return append(_current_filename, str);
+}
 
 
 
+
+
+
+/*---------------------------------------------------------------------------------*/
 uint8_t FileSystem::append(const char *path, const char *msg)
 {
     File file = SPIFFS.open(path, FILE_APPEND);
@@ -173,60 +238,10 @@ uint8_t FileSystem::append(const char *path, const char *msg)
     return 1;
 }
 
-uint8_t FileSystem::storeMeasurement(float *power, float *pitch, float *roll, uint8_t *temp)
-{
-    /* Possible measurements and their max values:
-     * --------------
-     * power: 999.9
-     * pitch: -90.0
-     * roll : -90.0
-     * temp : 70
-     * --------------
-     * together it takes 17 chars for measurements + 3 for comma delimiter (,) + /0
-     */
 
-    char str[21];
-
-    // Store the values into string
-    sprintf(str, "%3.1f,%3.1f,%3.1f,%d\n", *power, *pitch, *roll, *temp);
-
-    // Return 0 if there is an error
-    return append(_current_filename, str);
-}
-
-uint8_t FileSystem::storeMeasurementWTimstamp(float *power, float *pitch, float *roll, uint8_t *temp, uint8_t *h, uint8_t *m, uint8_t *s)
-{
-    /* Possible measurements and their max values:
-     * --------------
-     * power: 999.9
-     * pitch: -90.0
-     * roll : -90.0
-     * temp : 70
-     * --------------
-     * together it takes 17 chars for measurements + 3 for comma delimiter (,) + /0
-     * plus
-     * 6 chars for time and 2 for '[]'
-     * 
-     */
-
-    char str[30];
-
-    // Store the values into string
-    sprintf(str, "[%2d%2d%2d]%3.1f,%3.1f,%3.1f,%d\n", *h, *m, *s, *power, *pitch, *roll, *temp);
-
-    // Return 0 if there is an error
-    return append(_current_filename, str);
-}
-
-
-
-
-
-
-
-
+/*---------------------------------------------------------------------------------*/
 /*
-// TODO - do we need to check for existing files or not?
+//Check for existing files or not?
 uint8_t SERVER_check4html(void)
 {
     const char *filename;

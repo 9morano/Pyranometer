@@ -1,17 +1,21 @@
 
+/************************************************************************************
+ * @version 3
+ * @author 9morano
+ * @date 30.09.2021
+ * @todo 
+ ***********************************************************************************/
 #include "MCP3421.h"
 #include <Wire.h>
 
 
-#define SDA_PIN				(26) 			
-#define SCL_PIN				(27)
-uint8_t MCP3421_ADDRESS	 = 0x68;
-
+/*---------------------------------------------------------------------------------*/
 MCP3421::MCP3421()
 {
 
 }
 
+/*---------------------------------------------------------------------------------*/
 void MCP3421::setup(void)
 {
     if(!Wire.begin(SDA_PIN, SCL_PIN)){
@@ -23,21 +27,22 @@ void MCP3421::setup(void)
     uint8_t error = Wire.endTransmission();
 
     if(error == 0){
-        // Set up to default configuration
         write(_config_register);
     }
     else{
-        MCP3421_ADDRESS = 0x69;
+        MCP3421_ADDRESS = 0x68;
         write(_config_register);
     }
 }
 
+/*---------------------------------------------------------------------------------*/
 void MCP3421::setConfig(uint8_t conf_reg)
 {
     _config_register = conf_reg;
     write(conf_reg);
 }
 
+/*---------------------------------------------------------------------------------*/
 void MCP3421::getConfig(uint8_t *conf_reg)
 {
     uint8_t tmp[3];
@@ -46,13 +51,13 @@ void MCP3421::getConfig(uint8_t *conf_reg)
     *conf_reg = tmp[2];
 }
 
-// Start single shot measurement
+/*---------------------------------------------------------------------------------*/
 void MCP3421::startOneshot(void)
 {
     write(_config_register | MCP3421_READY_BIT);
 }
 
-// Blocking until getting the result...
+/*---------------------------------------------------------------------------------*/
 uint8_t MCP3421::getAdcRaw(int16_t *val)
 {
     uint8_t result[3];
@@ -68,7 +73,7 @@ uint8_t MCP3421::getAdcRaw(int16_t *val)
     return 1;
 }
 
-// Check for the result only one..if success, store it to the val
+/*---------------------------------------------------------------------------------*/
 uint8_t MCP3421::checkAdcRaw(int16_t *val)
 {
     uint8_t result[3];
@@ -86,7 +91,7 @@ uint8_t MCP3421::checkAdcRaw(int16_t *val)
     return 1;
 }
 
-// Blocking mode to get the voltage
+/*---------------------------------------------------------------------------------*/
 void MCP3421::getAdc(float *val)
 {
     // LSB for 16bit is 62.5uV
@@ -99,29 +104,37 @@ void MCP3421::getAdc(float *val)
     *val = (_val * 62.5) / 8;
 }
 
-// Blocking mode to get the power
+/*---------------------------------------------------------------------------------*/
 void MCP3421::getPowa(float *power)
 {
-    // 100uV represents 1W
+    // With our solar cell, 100uV represents 1W
     // If you get 350uV you have 3.5W
     float _voltage;
 
     getAdc(&_voltage);
 
     *power = _voltage / 100;
+
+    // Cell correction 
+    // Under reference we measured 1051W intead of 1000W
+    *power = *power * 0.9514748;
+
+    // Because we turned our cells the wrong way, values are inverted :D
+    *power = abs(*power);
 }
 
-/*--------- PRIVATE ---------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------------*/
+/* ------------------------------- PRIVATE --------------------------------------- */
+/*---------------------------------------------------------------------------------*/
 
-// You can only write into config register
+/*---------------------------------------------------------------------------------*/
 void MCP3421::write(uint8_t _config){
     Wire.beginTransmission(MCP3421_ADDRESS);
     Wire.write(_config_register);
     Wire.endTransmission();
 }
 
-// Always read 3 bytes, because we dont need 18bit resolution..in that case
-// you will get 4 bytes!!!
+/*---------------------------------------------------------------------------------*/
 uint8_t MCP3421::read(uint8_t _buff[])
 {
     uint8_t i = 0;

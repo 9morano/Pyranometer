@@ -1,12 +1,11 @@
-/* --------------------------------------------------------------------------------------------------
- * TODO
- * 
- * Ver.:  2
- * Auth.: Grega Morano
- * Date : 24.05.2021
- * About:
- * 
- * --------------------------------------------------------------------------------------------------*/
+/************************************************************************************
+ * @version 3
+ * @author 9morano
+ * @date 30.09.2021
+ * @todo delete printf debug messages when deploying - those only take up precious 
+ *       place :)
+ ***********************************************************************************/
+
 
 #include "Arduino.h"
 #include "pyrano_server.h"
@@ -15,6 +14,7 @@
 AsyncWebServer srvr(80);
 AsyncWebSocket ws("/ws");
 
+/*---------------------------------------------------------------------------------*/
 uint8_t SERVER_init(void)
 {   
 
@@ -98,28 +98,27 @@ uint8_t SERVER_init(void)
     return status;
 }
 
-
+/*---------------------------------------------------------------------------------*/
 uint8_t SERVER_start(void)
 {
     srvr.begin();
     return 1;
 }
 
+/*---------------------------------------------------------------------------------*/
 uint8_t SERVER_stop(void)
 {
     srvr.end();
     return 1;
 }
 
+/*---------------------------------------------------------------------------------*/
 void SERVER_cleanup(void)
 {
-    // This cleanup is a workaround, bc browser sometimes doesnt close the connection properly.
-    // If you want to save power, then calling as infrequently as once per second is sufficient.
     ws.cleanupClients();
 }
 
-// It is used only the first time client opens html site to display variable strings
-// TODO: remove this...return raw HTML without this processor - no need for it
+/*---------------------------------------------------------------------------------*/
 String SERVER_processor(const String& var)
 {
     /*if(var == "STATE"){
@@ -138,6 +137,7 @@ String SERVER_processor(const String& var)
     return String();
 }
 
+/*---------------------------------------------------------------------------------*/
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
 
@@ -167,7 +167,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
     }
 }
 
-// Handle socket message - whenever we receive somethin on it
+/*---------------------------------------------------------------------------------*/
 void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len) 
 {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
@@ -317,7 +317,7 @@ void SERVER_receiveWebSocketMessage(void *arg, uint8_t *data, size_t len)
 }
 
 
-// Value length must be max 18 chars
+/*---------------------------------------------------------------------------------*/
 uint8_t SERVER_sendWebSocketMessage(uint8_t action, const char *value){
     
     // Define the number of elements used in JSON document

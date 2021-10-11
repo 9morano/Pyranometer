@@ -1,3 +1,9 @@
+/* Poizkus igranja z interupti - activity in double tap
+ * Interupt sproži rutino ADXL_ISR ... v njej bi morali pobrisati interupt pin, kar lahko nardimo s prebranim
+ * SOURCE registrom. Tega pa ne moremo narediti v ISR rutini, ker je I2C prepočasen.
+ * Workaround: v ISR kliči task, ki prebere registre na pospeškometru.
+ */
+
 #include <Arduino.h>
 #include "Wire.h"
 #include "ADXL350.h"
@@ -68,13 +74,10 @@ void setup() {
         "Task 1", 			// task name for debugging
         1000,     			// stack depth in bytes
         NULL,     			// task parameters
-        1,       		 	// priority, lower number is first
+        21,       		 	// priority, higest number is first
         &accTaskHandle      // task handle (to interact with task from outside)
   	);
 
-	
-	// First calibrate device!
-    // adxl.setup(2, -7, 5);
 	adxl.setup();
 	adxl.setRange(1);
 
@@ -89,9 +92,6 @@ void setup() {
 	adxl.begin();
 
 	delay(1000);
-
-	
-
 }
 
 float pitch = 0, roll = 0;
@@ -137,6 +137,5 @@ void loop() {
 
 
     delay(100);
-
 }
 

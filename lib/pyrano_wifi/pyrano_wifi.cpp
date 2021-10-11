@@ -1,16 +1,14 @@
-/* --------------------------------------------------------------------------------------------------
- * TODO
- * 
- * Ver.:  2
- * Auth.: Grega Morano
- * Date : 24.05.2021
- * About:
- * 
- * --------------------------------------------------------------------------------------------------*/
+/************************************************************************************
+ * @version 3
+ * @author 9morano
+ * @date 30.09.2021
+ * @todo Check the hostname setting - this IP usage is not practical 
+ ***********************************************************************************/
 
 #include "Arduino.h"
 #include "pyrano_wifi.h"
 
+/*---------------------------------------------------------------------------------*/
 uint8_t pyranoWIFI::init()
 {
     // Has to be init in separate function, not already at constructor
@@ -32,13 +30,15 @@ uint8_t pyranoWIFI::init()
     return status;
 }
 
+/*---------------------------------------------------------------------------------*/
 uint8_t pyranoWIFI::APstart(void)
 {
     is_on = 1;
-    // Remove the password parameter if you want the AP to be open.
+    // Add the password parameter if you want the AP to be secured.
     return w.softAP(ssid);
 }
 
+/*---------------------------------------------------------------------------------*/
 void pyranoWIFI::APstop(void)
 {
     is_on = 0;
@@ -46,6 +46,7 @@ void pyranoWIFI::APstop(void)
 
 }
 
+/*---------------------------------------------------------------------------------*/
 String pyranoWIFI::getIP(void)
 {
     // Cast a IP address to string
